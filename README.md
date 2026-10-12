@@ -174,7 +174,8 @@ small protocol, and an orderly board grows out of it.
 
 ## Contributing
 
-Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Report vulnerabilities privately:
+Questions and ideas go to [Discussions](https://github.com/Pandusss/conus/discussions); bugs to issues; pull requests
+are welcome, see [CONTRIBUTING.md](CONTRIBUTING.md). Report vulnerabilities privately:
 [SECURITY.md](SECURITY.md).
 
 ## License

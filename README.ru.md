@@ -172,7 +172,8 @@ CI), `CONUS_CONFIG_DIR` переносит его в другой каталог
 
 ## Участие
 
-Issues и pull request'ы приветствуются — см. [CONTRIBUTING.md](CONTRIBUTING.md). Об уязвимостях сообщайте приватно:
+Вопросы и идеи — в [Discussions](https://github.com/Pandusss/conus/discussions), ошибки — в issues; pull request'ы
+приветствуются — см. [CONTRIBUTING.md](CONTRIBUTING.md). Об уязвимостях сообщайте приватно:
 [SECURITY.md](SECURITY.md).
 
 ## Лицензия
