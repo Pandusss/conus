@@ -27,7 +27,7 @@ jobs:
       - name: Generated files are up to date (skill, plugin MCP bridge, icon)
         run: |
           npm run gen
-          node scripts/gen-icon.mjs
+          npm run gen:icon
           git diff --exit-code
       # Postgres comes from testcontainers; the runner has Docker.
       - run: npm test

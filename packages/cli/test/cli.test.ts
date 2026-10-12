@@ -509,6 +509,57 @@ describe('conus setup', () => {
   });
 });
 
+describe('conus logo', () => {
+  /** A terminal with its own clock: sleeping only moves the clock. */
+  function fakeTerminal(columns = 120) {
+    let clock = 1000;
+    const written: string[] = [];
+    const term = {
+      columns, write: (s: string) => { written.push(s); }, now: () => clock,
+      sleep: async (ms: number) => { clock += ms; }, onInterrupt: () => () => {},
+    };
+    return { term, written };
+  }
+
+  it('prints the finished logo with the tagline when stdout is not a terminal', async () => {
+    const t = io();
+    expect(await runCli(['logo'], t.io)).toBe(0);
+    const out = t.out.join('\n');
+    expect(out).toContain('▄▀▀▀ ▄▀▀▄ █▀▀▄ █  █ ▄▀▀▀');
+    expect(out).toContain('tasks your AI agents keep themselves');
+    expect(out).toContain('▮');
+    expect(out).not.toContain('\x1b');
+    t.out.length = 0;
+    await runCli(['logo'], { ...t.io, plainGlyphs: true });
+    expect(t.out.join('\n')).not.toContain('▮');
+  });
+
+  it('assembles in place in a terminal: redraws over itself, hides the cursor and brings it back', async () => {
+    const t = io();
+    const { term, written } = fakeTerminal();
+    expect(await runCli(['logo'], { ...t.io, terminal: term })).toBe(0);
+    const all = written.join('');
+    expect(written.length).toBeGreaterThan(60);
+    expect(all.startsWith('\x1b[?25l')).toBe(true);
+    expect(all.endsWith('\x1b[0m\x1b[?25h')).toBe(true);
+    expect(all).toMatch(/\x1b\[13F/);
+    expect(written.at(-2)).toContain('tasks your AI agents keep themselves');
+    expect(t.out).toEqual([]);
+  });
+
+  it('skips the animation when the terminal is too narrow, and plays a short one before setup', async () => {
+    const narrow = fakeTerminal(40);
+    await runCli(['logo'], { ...io().io, terminal: narrow.term });
+    expect(narrow.written).toEqual([]);
+    const t = io({ fetchMap: HEALTHY });
+    const { term, written } = fakeTerminal();
+    expect(await runCli(['setup', 'https://conus.example.com', 'conus_1', '--no-rules'], { ...t.io, terminal: term })).toBe(0);
+    expect(written.join('')).toContain('▮');
+    expect(written.join('')).not.toContain('tasks your AI agents');
+    expect(t.out.join('\n')).toContain('Logged in as claude-code@pc.');
+  });
+});
+
 describe('installStdoutGuard', () => {
   const pipeError = (code: string) => Object.assign(new Error(`write ${code}`), { code });
   const fakes = () => ({ stream: new EventEmitter(), proc: { exitCode: undefined as number | string | null | undefined } });

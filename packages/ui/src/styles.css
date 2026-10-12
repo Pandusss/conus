@@ -573,7 +573,7 @@ kbd {
 }
 .login-card > .muted { margin-top: -6px; font-size: 13.5px; }
 .login-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.login-title { margin: 4px 0 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+.login-title { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
 .login-card .error { margin: 0; }
 
 /* ───────────────────────── Motion ───────────────────────── */
@@ -634,3 +634,20 @@ kbd {
   .page-head h1, .task-title { font-size: 18px; }
   .table th, .table td { padding: 8px 10px; }
 }
+
+/* ───────────────────────── The assembling logo ───────────────────────── */
+/* A grid of equal character cells: bars and half blocks are boxes, so no font decides the picture. */
+.ascii-logo { --cell-w: 6.6px; --cell-h: 12.6px; display: grid; color: var(--text); user-select: none; line-height: 1; }
+.ascii-row { display: flex; height: var(--cell-h); }
+.ascii-c {
+  position: relative; flex: 0 0 var(--cell-w); width: var(--cell-w); height: var(--cell-h);
+  display: grid; place-items: center; font-family: var(--mono); font-size: 10px; overflow: hidden;
+}
+.ascii-c::before { content: none; position: absolute; background: currentColor; }
+.ascii-bar::before { content: ''; left: 20%; right: 22%; top: 10%; bottom: 10%; border-radius: 1px; }
+.ascii-full::before { content: ''; inset: 0; }
+.ascii-top::before { content: ''; inset: 0 0 50% 0; }
+.ascii-bottom::before { content: ''; inset: 50% 0 0 0; }
+.ascii-dot::before { content: ''; left: 34%; right: 34%; top: 40%; bottom: 40%; }
+.login-stack { display: flex; flex-direction: column; align-items: center; gap: 22px; width: min(360px, 100%); }
+.login-lead { margin: 0; font-size: 13.5px; }

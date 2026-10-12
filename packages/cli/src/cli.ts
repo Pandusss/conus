@@ -16,6 +16,7 @@ import { claudeCliAvailable, claudeInstallInstructions, DEFAULT_MARKETPLACE, ins
 import { installCodex } from './install/codex';
 import { installGemini } from './install/gemini';
 import { globalRuleTargets, installRules } from './install/rules';
+import { playLogo, staticLogo, type Terminal } from './logo';
 
 export const VERSION: string = pkg.version;
 export interface CliIO {
@@ -25,6 +26,10 @@ export interface CliIO {
   run: Run;
   /** Asks the user a question on the terminal; null when stdin is not a terminal. */
   ask(question: string): Promise<string | null>;
+  /** An interactive terminal to animate in; absent when stdout is not one (pipes, CI, NO_COLOR, TERM=dumb). */
+  terminal?: Terminal;
+  /** The terminal may lack some glyphs (the classic Windows console): draw plainer ones. */
+  plainGlyphs?: boolean;
 }
 
 const help = (t: Translate) => `conus ${VERSION} — ${t('the agent client of the Conus task manager', 'агентский клиент менеджера задач Conus')}
@@ -36,6 +41,7 @@ const help = (t: Translate) => `conus ${VERSION} — ${t('the agent client of th
   conus disable | conus enable     ${t('stop/resume tracking in the current repository', 'отключить/включить учёт в текущем репозитории')}
   conus init --agents-md           ${t('add the Conus block to the repository\'s AGENTS.md / CLAUDE.md', 'добавить блок Conus в AGENTS.md / CLAUDE.md репозитория')}
   conus config set send_text <true|false>
+  conus logo                       ${t('the Conus logo assembling itself', 'логотип Conus, который собирается сам')}
   conus mcp                        ${t('the MCP server agents start (stdio)', 'MCP-сервер, который запускают агенты (stdio)')}
   conus hook <event> --agent <claude|codex>   ${t('(called by agent hooks)', '(вызывается хуками агентов)')}`;
 
@@ -116,7 +122,10 @@ function installGeminiFor(io: CliIO, t: Translate, h: AgentHomes): string {
   return `${t('Gemini CLI: MCP server added to', 'Gemini CLI: MCP-сервер добавлен в')} ${r.changed[0]}`;
 }
 
+const tagline = (t: Translate) => t('tasks your AI agents keep themselves', 'задачи, которые агенты ведут сами');
+
 async function setup(rest: string[], io: CliIO, t: Translate, h: AgentHomes): Promise<number> {
+  if (io.terminal) await playLogo(io.terminal, { speed: 1.6, plain: !!io.plainGlyphs });
   const [argUrl, argToken] = positional(rest);
   let agent: string | null = null;
   if (argUrl && argToken) {
@@ -181,6 +190,11 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
         return 0;
       }
       case 'setup': return await setup(rest, io, t, homes);
+      case 'logo': {
+        if (io.terminal) await playLogo(io.terminal, { tagline: tagline(t), plain: !!io.plainGlyphs });
+        else io.stdout(staticLogo(tagline(t), { color: false, plain: !!io.plainGlyphs }));
+        return 0;
+      }
       case 'login': {
         const [url, token] = rest;
         if (!url || !token) { io.stderr(t('usage: conus login <url> <token>', 'использование: conus login <url> <token>')); return 1; }

@@ -1,7 +1,9 @@
-<p align="center">
-  <img src="docs/assets/conus.svg" width="96" height="96" alt="Conus logo: Rule 30 grown from one cell">
-</p>
-<h1 align="center">Conus</h1>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/conus-animated-dark.svg">
+    <img src="docs/assets/conus-animated-light.svg" width="486" alt="Conus: the logo assembles itself out of dust — Rule 30 grown from one cell, and the word conus">
+  </picture>
+</h1>
 <p align="center"><b>A task manager your AI agents keep themselves.</b></p>
 <p align="center">English · <a href="README.ru.md">Русский</a></p>
 

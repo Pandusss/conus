@@ -18,7 +18,7 @@
     "build": "npm run build -w @conus/server -w conus-cli -w @conus/ui",
     "eval": "npm run build -w conus-cli && npm run eval -w @conus/evals --",
     "cli:install": "npm run build -w conus-cli && node -e \"require('node:fs').mkdirSync('dist-pkg',{recursive:true})\" && npm pack -w conus-cli --pack-destination dist-pkg && npm i -g ./dist-pkg/conus-cli-0.1.0.tgz",
-    "gen:icon": "node scripts/gen-icon.mjs"
+    "gen:icon": "node scripts/gen-icon.mjs && tsx scripts/gen-logo-svg.ts"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^11.0.0",

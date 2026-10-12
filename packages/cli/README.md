@@ -19,6 +19,7 @@ in Claude Code, the MCP server and hooks in Codex, the MCP server in Gemini CLI,
 | `conus doctor` | Check the configuration, the server, the token, PATH and each agent |
 | `conus install claude\|codex\|gemini\|rules` | Connect one agent, or add the Conus rule to every agent's global instructions |
 | `conus disable` / `conus enable` | Stop or resume tracking in the current git repository |
+| `conus logo` | The Conus logo assembling itself out of dust |
 | `conus mcp` | The stdio MCP server agents start; it relays to your Conus server |
 | `conus hook <event> --agent <claude\|codex>` | Called by agent hooks |
 

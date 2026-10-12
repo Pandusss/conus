@@ -3,7 +3,7 @@ import { useId, useState, type FormEvent, type ReactNode } from 'react';
 import { api, HttpError } from '../api';
 import { errorText } from '../components/ErrorLine';
 import { LangSwitch } from '../components/LangSwitch';
-import { BrandMark } from '../components/Shell';
+import { AssemblingLogo } from '../components/AssemblingLogo';
 import { useT } from '../i18n';
 
 /** Sign-in, or the first-run setup (setup code + owner password) while the server has no owner yet. */
@@ -19,16 +19,20 @@ export function Login({ onDone }: { onDone: () => void }) {
   return <SignInForm onDone={onDone} notice={setUpElsewhere} />;
 }
 
-function Card({ children, onSubmit }: { children: ReactNode; onSubmit: (e: FormEvent) => void }) {
+/** The logo assembles above the card; the card's head holds its heading and the language switch. */
+function Card({ head, children, onSubmit }: { head: ReactNode; children: ReactNode; onSubmit: (e: FormEvent) => void }) {
   return (
     <div className="screen-center">
-      <form className="login-card" onSubmit={onSubmit}>
-        <div className="login-head">
-          <div className="brand brand-lg"><BrandMark />Conus</div>
-          <LangSwitch />
-        </div>
-        {children}
-      </form>
+      <div className="login-stack">
+        <AssemblingLogo />
+        <form className="login-card" onSubmit={onSubmit}>
+          <div className="login-head">
+            <div>{head}</div>
+            <LangSwitch />
+          </div>
+          {children}
+        </form>
+      </div>
     </div>
   );
 }
@@ -44,7 +48,7 @@ function SignInForm({ onDone, notice }: { onDone: () => void; notice: boolean })
   const message = !error ? null
     : error instanceof HttpError && error.code === 'unauthorized' ? t.login.wrongPassword : errorText(error, t);
   return (
-    <Card onSubmit={async (e) => {
+    <Card head={<p className="login-lead muted">{notice ? t.setup.alreadySetUp : t.login.tagline}</p>} onSubmit={async (e) => {
       e.preventDefault();
       if (busy) return;
       setError(null);
@@ -52,7 +56,6 @@ function SignInForm({ onDone, notice }: { onDone: () => void; notice: boolean })
       try { await api('/login', { method: 'POST', json: { password } }); onDone(); }
       catch (err) { setError(err); } finally { setBusy(false); }
     }}>
-      <p className="muted">{notice ? t.setup.alreadySetUp : t.login.tagline}</p>
       <div className="field">
         <label htmlFor={fieldId}>{t.login.password}</label>
         <input id={fieldId} type="password" placeholder={t.login.password} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
@@ -75,7 +78,7 @@ function SetupForm({ onDone, onAlreadySetUp }: { onDone: () => void; onAlreadySe
   const ids = { code: useId(), password: useId(), confirm: useId() };
   const message = problem === null ? null : typeof problem === 'string' ? t.setup[problem] : errorText(problem.error, t);
   return (
-    <Card onSubmit={async (e) => {
+    <Card head={<h1 className="login-title">{t.setup.title}</h1>} onSubmit={async (e) => {
       e.preventDefault();
       if (busy) return;
       if (password.length < 8) return setProblem('tooShort');
@@ -92,7 +95,6 @@ function SetupForm({ onDone, onAlreadySetUp }: { onDone: () => void; onAlreadySe
         setBusy(false);
       }
     }}>
-      <h1 className="login-title">{t.setup.title}</h1>
       <p className="muted">{t.setup.text}</p>
       <div className="field">
         <label htmlFor={ids.code}>{t.setup.code}</label>

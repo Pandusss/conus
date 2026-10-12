@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 — 2026-10-13
+
+- The logo assembles itself: dust flies along arcs into the Rule 30 cone and the word conus — on the web app's
+  sign-in and setup screens (once; still with reduced motion), in `conus logo` and before `conus setup` (terminals
+  only), and at the top of the README. One model for all three: `packages/brand`.
+
 ## 0.1.1 — 2026-10-12
 
 - Agents get the CLI from the latest GitHub release: the web app, the READMEs and the installer show

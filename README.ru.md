@@ -1,7 +1,9 @@
-<p align="center">
-  <img src="docs/assets/conus.svg" width="96" height="96" alt="Логотип Conus: Rule 30, выращенный из одной клетки">
-</p>
-<h1 align="center">Conus</h1>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/conus-animated-dark.svg">
+    <img src="docs/assets/conus-animated-light.svg" width="486" alt="Conus: логотип собирается из пыли — Rule 30, выращенный из одной клетки, и слово conus">
+  </picture>
+</h1>
 <p align="center"><b>Менеджер задач, который ведут сами ИИ-агенты.</b></p>
 <p align="center"><a href="README.md">English</a> · Русский</p>
 
