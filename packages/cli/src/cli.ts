@@ -4,7 +4,7 @@ import pkg from '../package.json' with { type: 'json' };
 import { join } from 'node:path';
 import { AGENTS_MD_BLOCK, AGENTS_MD_END, AGENTS_MD_START } from '@conus/protocol';
 import { createApi } from './api-client';
-import { readConfig, updateConfig, writeConfig, type ConusConfig } from './config';
+import { configuredLang, readConfig, setConfiguredLang, updateConfig, writeConfig, type ConusConfig } from './config';
 import { setRepoEnabled } from './disable';
 import { runDoctor, type Check } from './doctor';
 import { repoContext } from './git';
@@ -41,6 +41,7 @@ const help = (t: Translate) => `conus ${VERSION} — ${t('the agent client of th
   conus disable | conus enable     ${t('stop/resume tracking in the current repository', 'отключить/включить учёт в текущем репозитории')}
   conus init --agents-md           ${t('add the Conus block to the repository\'s AGENTS.md / CLAUDE.md', 'добавить блок Conus в AGENTS.md / CLAUDE.md репозитория')}
   conus config set send_text <true|false>
+  conus config set lang <en|ru>     ${t('the language of conus messages (English by default)', 'язык сообщений conus (по умолчанию английский)')}
   conus logo                       ${t('the Conus logo assembling itself', 'логотип Conus, который собирается сам')}
   conus mcp                        ${t('the MCP server agents start (stdio)', 'MCP-сервер, который запускают агенты (stdio)')}
   conus hook <event> --agent <claude|codex>   ${t('(called by agent hooks)', '(вызывается хуками агентов)')}`;
@@ -177,7 +178,7 @@ async function setup(rest: string[], io: CliIO, t: Translate, h: AgentHomes): Pr
 export async function runCli(argv: string[], io: CliIO): Promise<number> {
   const [cmd, ...rest] = argv;
   const home = io.env.CONUS_HOME_OVERRIDE || homedir();
-  const t = translator(detectLang(io.env));
+  const t = translator(detectLang(io.env, configuredLang(io.env)));
   const homes: AgentHomes = { home, codexHome: io.env.CODEX_HOME || join(home, '.codex'), geminiHome: join(home, '.gemini') };
   try {
     switch (cmd) {
@@ -260,7 +261,12 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
           io.stdout(`send_text = ${rest[2]}`);
           return 0;
         }
-        io.stderr(t('usage: conus config set send_text <true|false>', 'использование: conus config set send_text <true|false>'));
+        if (rest[0] === 'set' && rest[1] === 'lang' && (rest[2] === 'en' || rest[2] === 'ru')) {
+          setConfiguredLang(rest[2], io.env);
+          io.stdout(rest[2] === 'ru' ? 'lang = ru: сообщения conus будут по-русски.' : 'lang = en: conus speaks English.');
+          return 0;
+        }
+        io.stderr(t('usage: conus config set send_text <true|false> | conus config set lang <en|ru>', 'использование: conus config set send_text <true|false> | conus config set lang <en|ru>'));
         return 1;
       }
       case '--version': io.stdout(VERSION); return 0;

@@ -71,10 +71,18 @@ describe('conus CLI', () => {
     }
   });
 
-  it('speaks Russian when the locale is Russian', async () => {
+  it('speaks English in a Russian locale; Russian only when chosen, and the choice survives a new login', async () => {
     const t = io({ fetchMap: WHOAMI_OK });
-    expect(await runCli(['login', 'https://conus.example.com', 'conus_abc'], { ...t.io, env: { ...t.io.env, CONUS_LANG: '', LANG: 'ru_RU.UTF-8' } })).toBe(0);
-    expect(t.out.join('\n')).toBe('Вход выполнен: агент claude-code@pc.');
+    const env = { ...t.io.env, CONUS_LANG: '', LANG: 'ru_RU.UTF-8', LC_ALL: 'ru_RU.UTF-8' };
+    expect(await runCli(['login', 'https://conus.example.com', 'conus_abc'], { ...t.io, env })).toBe(0);
+    expect(t.out.pop()).toBe('Logged in as claude-code@pc.');
+    expect(await runCli(['config', 'set', 'lang', 'ru'], { ...t.io, env })).toBe(0);
+    expect(await runCli(['login', 'https://conus.example.com', 'conus_abc'], { ...t.io, env })).toBe(0);
+    expect(t.out.pop()).toBe('Вход выполнен: агент claude-code@pc.');
+    expect(JSON.parse(readFileSync(configPath(t.dir), 'utf8'))).toMatchObject({ lang: 'ru', token: 'conus_abc' });
+    await runCli(['login', 'https://conus.example.com', 'conus_abc'], { ...t.io, env: { ...env, CONUS_LANG: 'en' } });
+    expect(t.out.pop()).toBe('Logged in as claude-code@pc.');
+    expect(await runCli(['config', 'set', 'lang', 'fr'], { ...t.io, env })).toBe(1);
   });
 
   it('login fails on a bad token without writing config', async () => {

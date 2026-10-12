@@ -49,10 +49,7 @@ if [ ! -f .env ]; then
   if [ -z "${CONUS_DOMAIN+set}" ]; then
     domain=$(ask "Domain for HTTPS, e.g. conus.example.com (empty: run on http://localhost:8080 only): ")
   fi
-  lang=${CONUS_LANG:-}
-  if [ -z "$lang" ]; then
-    case "${LC_ALL:-${LANG:-}}" in ru*) lang=ru ;; *) lang=en ;; esac
-  fi
+  lang=${CONUS_LANG:-en}
   code=$(setup_code)
   (
     umask 077

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 — 2026-10-13
+
+- English is the default everywhere; Russian only by choice. The web app no longer follows the browser's
+  language (the EN/RU switch remembers a choice), the CLI no longer follows the system locale
+  (`conus config set lang ru` or `CONUS_LANG=ru`), and `install.sh` sets `CONUS_LANG=en` unless told otherwise.
+
 ## 0.2.0 — 2026-10-13
 
 - The logo assembles itself: dust flies along arcs into the Rule 30 cone and the word conus — on the web app's

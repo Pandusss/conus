@@ -28,10 +28,33 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ConusConfig | 
   return { url, token, sendText };
 }
 
-export function writeConfig(cfg: ConusConfig, env: NodeJS.ProcessEnv = process.env): void {
+/** The config file as an object, whatever is (or is not) in it. */
+function rawConfig(env: NodeJS.ProcessEnv): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(join(configDir(env), 'config.json'), 'utf8'));
+    return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
+  } catch { return {}; }
+}
+
+function writeRaw(raw: Record<string, unknown>, env: NodeJS.ProcessEnv): void {
   const dir = configDir(env);
   mkdirSync(dir, { recursive: true });
-  writeFileAtomic(join(dir, 'config.json'), JSON.stringify({ url: cfg.url, token: cfg.token, send_text: cfg.sendText }, null, 2), 0o600);
+  writeFileAtomic(join(dir, 'config.json'), JSON.stringify(raw, null, 2), 0o600);
+}
+
+export function writeConfig(cfg: ConusConfig, env: NodeJS.ProcessEnv = process.env): void {
+  // Settings that are not part of the login (the language) survive a new login.
+  writeRaw({ ...rawConfig(env), url: cfg.url, token: cfg.token, send_text: cfg.sendText }, env);
+}
+
+/** The language chosen with `conus config set lang`, if any; it works before any login. */
+export function configuredLang(env: NodeJS.ProcessEnv = process.env): string | null {
+  const lang = rawConfig(env).lang;
+  return typeof lang === 'string' ? lang : null;
+}
+
+export function setConfiguredLang(lang: 'en' | 'ru', env: NodeJS.ProcessEnv = process.env): void {
+  writeRaw({ ...rawConfig(env), lang }, env);
 }
 
 export function updateConfig(patch: Partial<ConusConfig>, env: NodeJS.ProcessEnv = process.env): ConusConfig {

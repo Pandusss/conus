@@ -21,21 +21,8 @@ export function storedLang(): Lang | null {
   return isLang(v) ? v : null;
 }
 
-/** The first browser language we have a dictionary for ('ru-RU' → ru, 'en-GB' → en); English when there is none. */
-export function browserLang(): Lang {
-  let prefs: readonly string[] = [];
-  try {
-    prefs = navigator.languages?.length ? navigator.languages : navigator.language ? [navigator.language] : [];
-  } catch { /* no navigator */ }
-  for (const tag of prefs) {
-    const base = tag.toLowerCase().split('-')[0];
-    if (isLang(base)) return base;
-  }
-  return 'en';
-}
-
-/** The stored choice, else the browser's languages, else English. */
-export const detectLang = (): Lang => storedLang() ?? browserLang();
+/** English for everyone until the person picks another language (the choice is remembered in `conus.lang`). */
+export const detectLang = (): Lang => storedLang() ?? 'en';
 
 interface I18n {
   /** The dictionary of the current language. */

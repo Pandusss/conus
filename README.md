@@ -133,7 +133,7 @@ are never tracked.
 | `COMPOSE_PROFILES=https`, `CONUS_DOMAIN` | off | The built-in HTTPS with Caddy and Let's Encrypt. |
 | `CONUS_PORT`, `CONUS_BIND` | `8080`, `127.0.0.1` | Where the app listens on the host. |
 | `CONUS_VERSION` | `latest` | The image tag, e.g. `0.1.0`. |
-| `CONUS_LANG` | `en` | `en` or `ru`: the language of what the server writes — chat notes, the agents' status line, task history. The web app has its own language switch. |
+| `CONUS_LANG` | `en` | `en` or `ru`: the language of what the server writes — chat notes, the agents' status line, task history. The web app is in English until you switch it to Russian (the switch is in the sidebar and on the sign-in screen). |
 | `CONUS_SETUP_CODE` | generated | The code for the first visit. Empty: a random one is printed in `docker compose logs app`. |
 | `ANTHROPIC_API_KEY` | empty | Turns on the judge: an LLM check at the end of a turn and short summaries of tasks the janitor sends to review. Without it the deterministic checks still run. |
 | `CONUS_JUDGE_ENABLED`, `CONUS_JUDGE_MODEL` | `true`, `claude-haiku-5-5` | The judge switch and model. |
@@ -145,8 +145,8 @@ Forgot the owner password: `docker compose exec app node dist/admin.mjs reset-pa
 ### Agent machines
 
 `conus setup` writes `~/.conus/config.json`. `CONUS_URL` and `CONUS_TOKEN` override it (handy in CI),
-`CONUS_CONFIG_DIR` moves it. Messages are in English, or in Russian when the locale is Russian (`CONUS_LANG`
-forces one).
+`CONUS_CONFIG_DIR` moves it. Messages are in English; `conus config set lang ru` (or `CONUS_LANG=ru`) switches
+them to Russian.
 
 ## Troubleshooting
 

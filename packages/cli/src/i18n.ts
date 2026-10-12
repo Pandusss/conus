@@ -1,13 +1,12 @@
 export type Lang = 'en' | 'ru';
 
-/** The language of the user's messages: Russian when the locale says so, English otherwise. */
-export function detectLang(env: NodeJS.ProcessEnv): Lang {
-  const locale = env.CONUS_LANG || env.LC_ALL || env.LC_MESSAGES || env.LANG || safeIntlLocale();
-  return /^ru\b|^ru[_-]/i.test(locale) ? 'ru' : 'en';
-}
-
-function safeIntlLocale(): string {
-  try { return Intl.DateTimeFormat().resolvedOptions().locale; } catch { return ''; }
+/**
+ * English for everyone; Russian only by choice: CONUS_LANG=ru, or `conus config set lang ru` (`configured`).
+ * The system locale does not decide.
+ */
+export function detectLang(env: NodeJS.ProcessEnv, configured?: string | null): Lang {
+  const choice = env.CONUS_LANG || configured || '';
+  return /^ru\b|^ru[_-]/i.test(choice.trim()) ? 'ru' : 'en';
 }
 
 /** Picks the message for the user's language: `t('Logged in', 'Вход выполнен')`. */

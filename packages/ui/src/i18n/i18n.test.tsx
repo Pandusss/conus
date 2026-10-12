@@ -19,52 +19,25 @@ afterEach(() => {
 });
 
 describe('detectLang', () => {
-  it('picks Russian for a Russian browser', () => {
-    browserPrefers('ru-RU', 'en-US');
-    expect(detectLang()).toBe('ru');
-    browserPrefers('ru');
-    expect(detectLang()).toBe('ru');
+  it('is English for every browser, Russian ones included, until the person picks a language', () => {
+    for (const prefs of [['ru-RU', 'en-US'], ['ru'], ['en-GB'], ['de'], []]) {
+      browserPrefers(...prefs);
+      expect(detectLang()).toBe('en');
+    }
   });
 
-  it('picks English for any other browser', () => {
-    browserPrefers('en-GB');
-    expect(detectLang()).toBe('en');
-    browserPrefers('de');
-    expect(detectLang()).toBe('en');
-    browserPrefers('rue'); // Rusyn is not Russian
-    expect(detectLang()).toBe('en');
-    browserPrefers();
-    expect(detectLang()).toBe('en');
-  });
-
-  it('takes the first preferred language it has a dictionary for', () => {
-    browserPrefers('de-DE', 'RU', 'en');
-    expect(detectLang()).toBe('ru');
-    browserPrefers('en-US', 'ru-RU');
-    expect(detectLang()).toBe('en');
-  });
-
-  it('falls back to navigator.language when there is no list', () => {
-    vi.spyOn(navigator, 'languages', 'get').mockReturnValue([]);
-    vi.spyOn(navigator, 'language', 'get').mockReturnValue('ru-UA');
-    expect(detectLang()).toBe('ru');
-  });
-
-  it('lets a stored choice win over the browser, and ignores a stored value it does not know', () => {
-    browserPrefers('ru-RU');
-    localStorage.setItem('conus.lang', 'en');
-    expect(detectLang()).toBe('en');
-    browserPrefers('en-US');
+  it('keeps the stored choice, and ignores a stored value it does not know', () => {
     localStorage.setItem('conus.lang', 'ru');
     expect(detectLang()).toBe('ru');
+    localStorage.setItem('conus.lang', 'en');
+    expect(detectLang()).toBe('en');
     localStorage.setItem('conus.lang', 'fr');
     expect(detectLang()).toBe('en');
   });
 
-  it('follows the browser when storage is denied', () => {
-    browserPrefers('ru-RU');
+  it('is English when storage is denied', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied'); });
-    expect(detectLang()).toBe('ru');
+    expect(detectLang()).toBe('en');
   });
 });
 
@@ -107,8 +80,13 @@ function Probe() {
 }
 
 describe('LangProvider', () => {
-  it('starts from the detected language and keeps <html lang> in step', () => {
+  it('starts in English even in a Russian browser, from a stored choice otherwise, and keeps <html lang> in step', () => {
     browserPrefers('ru-RU');
+    const first = render(<LangProvider><Probe /></LangProvider>);
+    expect(screen.getByText('Board')).toBeTruthy();
+    expect(document.documentElement.lang).toBe('en');
+    first.unmount();
+    localStorage.setItem('conus.lang', 'ru');
     render(<LangProvider><Probe /></LangProvider>);
     expect(screen.getByText('Доска')).toBeTruthy();
     expect(document.documentElement.lang).toBe('ru');

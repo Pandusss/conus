@@ -23,7 +23,7 @@ in Claude Code, the MCP server and hooks in Codex, the MCP server in Gemini CLI,
 | `conus mcp` | The stdio MCP server agents start; it relays to your Conus server |
 | `conus hook <event> --agent <claude\|codex>` | Called by agent hooks |
 
-Requires Node.js 22 or newer. Messages are in English, or in Russian when your locale is Russian.
+Requires Node.js 22 or newer. Messages are in English; `conus config set lang ru` switches them to Russian.
 See the [main README](https://github.com/Pandusss/conus#readme) for what is sent to the server and how to turn it off.
 
 MIT License.
