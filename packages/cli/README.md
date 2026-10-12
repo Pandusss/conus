@@ -8,6 +8,8 @@ npm install -g conus-cli
 conus setup https://conus.example.com conus_xxxxxxxx
 ```
 
+Or from the latest GitHub release: `npm install -g --allow-remote=all https://github.com/Pandusss/conus/releases/latest/download/conus-cli.tgz`.
+
 The token comes from the Conus web app: **Agents → Connect agent**. `conus setup` logs in, installs the Conus plugin
 in Claude Code, the MCP server and hooks in Codex, the MCP server in Gemini CLI, and checks the whole chain.
 

@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { apiError, json, mutations, renderPage } from '../test-utils';
 import { Agents } from './Agents';
+import { CLI_INSTALL } from '../install-command';
 
 afterEach(() => { vi.restoreAllMocks(); Reflect.deleteProperty(navigator, 'clipboard'); });
 
@@ -51,13 +52,13 @@ describe('Agents', () => {
     await userEvent.type(within(dialog).getByLabelText('Имя'), 'cx');
     await userEvent.selectOptions(within(dialog).getByLabelText('Тип'), 'codex');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Подключить' }));
-    await waitFor(() => expect(screen.getByText(/conus setup .* conus_SECRET/s).textContent).toContain('npm install -g conus-cli'));
+    await waitFor(() => expect(screen.getByText(/conus setup .* conus_SECRET/s).textContent).toContain(CLI_INSTALL));
     expect(screen.queryByRole('dialog')).toBeNull();
     // starting another connection does not touch the token already shown
     dialog = await openConnect();
     await userEvent.selectOptions(within(dialog).getByLabelText('Тип'), 'other');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Отмена' }));
-    expect(screen.getByText(/conus setup .* conus_SECRET/s).textContent).toContain('npm install -g conus-cli');
+    expect(screen.getByText(/conus setup .* conus_SECRET/s).textContent).toContain(CLI_INSTALL);
     await userEvent.click(screen.getByRole('button', { name: 'Скрыть' }));
     expect(screen.queryByText(/conus_SECRET/)).toBeNull();
   });

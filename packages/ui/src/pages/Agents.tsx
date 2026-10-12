@@ -8,6 +8,7 @@ import { ErrorLine, useActionError } from '../components/ErrorLine';
 import { useToast } from '../components/Toast';
 import { useT } from '../i18n';
 import { formatTime, kindLabel, relativeTime } from '../labels';
+import { CLI_INSTALL } from '../install-command';
 
 const KIND_ICON: Record<string, LucideIcon> = { claude_code: Sparkles, codex: Code, other: Bot };
 type Issued = { name: string; kind: string; token: string };
@@ -137,7 +138,7 @@ function TokenPanel({ issued, onHide }: { issued: Issued; onHide: () => void }) 
   const toast = useToast();
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
-  const command = `npm install -g conus-cli\nconus setup ${window.location.origin} ${issued.token}`;
+  const command = `${CLI_INSTALL}\nconus setup ${window.location.origin} ${issued.token}`;
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(command);

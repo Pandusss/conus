@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1 — 2026-10-12
+
+- Agents get the CLI from the latest GitHub release: the web app, the READMEs and the installer show
+  `npm install -g --allow-remote=all https://github.com/Pandusss/conus/releases/latest/download/conus-cli.tgz`
+  (`--allow-remote=all` is what npm 12 needs to install from a URL).
+- Release: the CLI package is attached to every GitHub release.
+
 ## 0.1.0 — 2026-10-12
 
 The first public release.

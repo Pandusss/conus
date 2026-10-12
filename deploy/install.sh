@@ -95,6 +95,7 @@ if [ -n "$code" ]; then
   say "First visit: enter the setup code $code and choose the owner password."
   say "(If the owner password is already set, just log in.)"
 fi
-say "Then connect your agents: in Conus open Agents → Connect, and on each agent machine run"
-say "  npm install -g conus-cli && conus setup $url <token>"
+say "Then connect your agents: in Conus open Agents → Connect agent, and on each agent machine run"
+say "  npm install -g --allow-remote=all https://github.com/Pandusss/conus/releases/latest/download/conus-cli.tgz"
+say "  conus setup $url <token>"
 case "$url" in http://localhost*) say "The server listens on 127.0.0.1:$port only: agents on other machines need a proxy or the built-in HTTPS." ;; esac

@@ -63,7 +63,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build -w conus-cli
-      - run: npm pack -w conus-cli --pack-destination dist-pkg && mv dist-pkg/conus-cli-*.tgz dist-pkg/conus-cli.tgz
+      - run: mkdir -p dist-pkg && npm pack -w conus-cli --pack-destination dist-pkg && mv dist-pkg/conus-cli-*.tgz dist-pkg/conus-cli.tgz
       - name: Release with the notes from CHANGELOG.md
         env:
           GH_TOKEN: ${{ github.token }}
