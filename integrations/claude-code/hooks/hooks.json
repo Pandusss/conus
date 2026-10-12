@@ -1,0 +1,10 @@
+{
+  "description": "Conus: keep the task manager in sync",
+  "hooks": {
+    "SessionStart": [{ "hooks": [{ "type": "command", "command": "conus hook session-start --agent claude", "timeout": 5 }] }],
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "conus hook prompt --agent claude", "timeout": 3 }] }],
+    "PostToolUse": [{ "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell|mcp__.*", "hooks": [{ "type": "command", "command": "conus hook tool --agent claude", "timeout": 5, "async": true }] }],
+    "Stop": [{ "hooks": [{ "type": "command", "command": "conus hook stop --agent claude", "timeout": 8 }] }],
+    "SessionEnd": [{ "hooks": [{ "type": "command", "command": "conus hook session-end --agent claude", "timeout": 2 }] }]
+  }
+}

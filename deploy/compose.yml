@@ -1,0 +1,41 @@
+# Conus server: Postgres and the app, from the published image. One file, three ways to run it:
+#   on this machine     docker compose up -d                              → http://localhost:8080
+#   behind your proxy   point it at 127.0.0.1:8080 and set CONUS_PUBLIC_URL to the public https:// address
+#   built-in HTTPS      COMPOSE_PROFILES=https and CONUS_DOMAIN in .env    → Caddy with Let's Encrypt on ports 80/443
+# install.sh writes .env for you (random database password, setup code, language, domain).
+name: conus
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: conus
+      POSTGRES_USER: conus
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (install.sh generates one)}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U conus"], interval: 5s, retries: 20 }
+    restart: unless-stopped
+  app:
+    image: ghcr.io/pandusss/conus:${CONUS_VERSION:-latest}
+    environment:
+      DATABASE_URL: postgres://conus:${POSTGRES_PASSWORD}@db:5432/conus
+      PUBLIC_URL: ${CONUS_PUBLIC_URL:-http://localhost:8080}
+      CONUS_LANG: ${CONUS_LANG:-en}
+      CONUS_SETUP_CODE: ${CONUS_SETUP_CODE:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CONUS_JUDGE_ENABLED: ${CONUS_JUDGE_ENABLED:-true}
+      CONUS_JUDGE_MODEL: ${CONUS_JUDGE_MODEL:-claude-haiku-5-5}
+    ports: ["${CONUS_BIND:-127.0.0.1}:${CONUS_PORT:-8080}:8080"]
+    depends_on: { db: { condition: service_healthy } }
+    restart: unless-stopped
+  caddy:
+    profiles: [https]
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    environment: { CONUS_DOMAIN: "${CONUS_DOMAIN:-}" }
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app]
+    restart: unless-stopped
+volumes: { pgdata: {}, caddy_data: {}, caddy_config: {} }

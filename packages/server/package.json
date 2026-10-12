@@ -1,0 +1,22 @@
+{
+  "name": "@conus/server",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/app.ts",
+    "./src/server": "./src/server.ts"
+  },
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@conus/core": "0.1.0",
+    "@conus/protocol": "0.1.0",
+    "@hono/node-server": "^1.13.0",
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "hono": "^4.6.0",
+    "zod": "^3.25.0"
+  }
+}

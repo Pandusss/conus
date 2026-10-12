@@ -1,0 +1,30 @@
+name: Bug report
+description: Something does not work as described
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: conus doctor
+      description: The output of `conus doctor` on the agent's machine, if the problem involves an agent. Remove anything private.
+      render: text
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: "`conus --version`, the server image tag, the agent (e.g. Claude Code 2.1.300) and the OS."
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The relevant part of `~/.conus/logs/hook.log` or `docker compose logs app`. Remove tokens and anything private.
+      render: text

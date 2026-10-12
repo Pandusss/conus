@@ -1,0 +1,14 @@
+id: subtask-discovered
+description: Large separable work found mid-task becomes a subtask
+fixture: node-cli-small
+turns:
+  - user: "Сделай чтение списка имён из текстового файла: greet --file names.txt приветствует каждого. Поддержку CSV-формата вынеси на потом отдельной подзадачей, сейчас только простой текст. Закоммить."
+expect:
+  created: { min: 2, max: 2 }
+  tasks:
+    - match: { title_like: "файл|file|список|list" }
+      status: [done, review]
+    - match: { title_like: "csv" }
+      status: [todo]
+      has_parent: true
+  max_nudges: 1

@@ -1,0 +1,12 @@
+id: brainstorm-then-agree
+description: An agreed but deferred piece of work becomes a todo task
+fixture: node-cli-small
+turns:
+  - user: "Давай обсудим: стоит ли добавить в CLI поддержку нескольких языков приветствия?"
+  - user: "Ок, договорились — делаем поддержку языков, но не сейчас, займёмся завтра. Код пока не трогай."
+expect:
+  created: { min: 1, max: 1 }
+  tasks:
+    - match: { title_like: "язык|locale|i18n|language|локал" }
+      status: [todo]
+  max_nudges: 1

@@ -1,0 +1,15 @@
+{
+  "name": "conus",
+  "description": "Conus: a task manager your AI agents keep themselves.",
+  "owner": {
+    "name": "Conus",
+    "url": "https://github.com/Pandusss/conus"
+  },
+  "plugins": [
+    {
+      "name": "conus",
+      "source": "./integrations/claude-code",
+      "description": "Autonomous task tracking for Claude Code via the Conus task manager."
+    }
+  ]
+}

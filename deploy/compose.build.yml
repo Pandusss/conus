@@ -1,0 +1,6 @@
+# For working on Conus: build the app image from this checkout instead of pulling the published one.
+#   docker compose -f compose.yml -f compose.build.yml up -d --build
+services:
+  app:
+    image: conus-app:dev
+    build: { context: .., dockerfile: deploy/Dockerfile }

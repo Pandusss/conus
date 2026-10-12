@@ -1,0 +1,18 @@
+{
+  "name": "conus",
+  "version": "0.1.0",
+  "description": "Autonomous task tracking: Claude keeps the Conus task manager in sync (MCP tools + hooks + task-protocol skill).",
+  "author": {
+    "name": "Conus",
+    "url": "https://github.com/Pandusss/conus"
+  },
+  "homepage": "https://github.com/Pandusss/conus",
+  "repository": "https://github.com/Pandusss/conus",
+  "license": "MIT",
+  "keywords": [
+    "tasks",
+    "task-manager",
+    "mcp",
+    "hooks"
+  ]
+}

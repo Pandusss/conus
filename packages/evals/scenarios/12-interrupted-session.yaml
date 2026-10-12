@@ -1,0 +1,12 @@
+id: interrupted-session
+description: A session killed mid-work leaves no task stuck in progress after reconciliation
+fixture: node-cli-small
+turns:
+  - user: "Перепиши весь вывод CLI на цветной с помощью ANSI-кодов и добавь тесты на это."
+    kill_after_seconds: 60
+expect:
+  tasks:
+    - match: { title_like: "цвет|ansi|color" }
+      status: [review, todo]
+  max_nudges: 1
+  janitor_allowed: true

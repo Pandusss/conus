@@ -1,0 +1,13 @@
+id: feature-with-small-fixes
+description: Incidental small fixes go into the main task's result, not separate tasks
+fixture: node-cli-small
+turns:
+  - user: "Добавь флаг --shout, который добавляет в конец приветствия три восклицательных знака. Заодно поправь опечатку в README ('Hellow') и закоммить всё."
+expect:
+  created: { min: 1, max: 1 }
+  proposed: { max: 0 }
+  tasks:
+    - match: { title_like: "shout|восклиц" }
+      status: [done, review]
+      result: non_empty
+  max_nudges: 1

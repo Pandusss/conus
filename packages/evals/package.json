@@ -1,0 +1,17 @@
+{
+  "name": "@conus/evals",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "eval": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@conus/core": "0.1.0",
+    "@conus/server": "0.1.0",
+    "@testcontainers/postgresql": "^11.0.0",
+    "yaml": "^2.6.0",
+    "zod": "^3.25.0"
+  }
+}

@@ -1,0 +1,11 @@
+id: small-edits
+description: A series of small edits creates no tasks (at most one D1 nudge that the agent declines)
+fixture: node-cli-small
+turns:
+  - user: "Поправь опечатку в README: 'Hellow' → 'Hello'."
+  - user: "Переименуй переменную msg в message в src/greet.js."
+  - user: "Обнови описание в package.json на 'Friendly greeter CLI'."
+expect:
+  created: { max: 0 }
+  proposed: { max: 0 }
+  max_nudges: 1

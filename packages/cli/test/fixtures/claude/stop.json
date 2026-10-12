@@ -1,0 +1,1 @@
+{"session_id":"cc-123","transcript_path":"__TRANSCRIPT__","cwd":"C:\\Users\\me\\repo","prompt_id":"p-1","permission_mode":"bypassPermissions","effort":{"level":"high"},"hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"Импорт CSV добавлен в src/import.ts, npm test проходит.","background_tasks":[],"session_crons":[]}

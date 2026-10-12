@@ -1,0 +1,9 @@
+{$CONUS_DOMAIN} {
+	encode gzip
+	request_body {
+		max_size 2MB
+	}
+	reverse_proxy app:8080 {
+		flush_interval -1
+	}
+}

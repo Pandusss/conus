@@ -1,0 +1,17 @@
+{
+  "name": "@conus/core",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@conus/protocol": "0.1.0",
+    "@anthropic-ai/sdk": "^0.132.1",
+    "@node-rs/argon2": "^2.0.0",
+    "pg": "^8.13.0",
+    "zod": "^3.25.0"
+  }
+}

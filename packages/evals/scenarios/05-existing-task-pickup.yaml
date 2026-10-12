@@ -1,0 +1,14 @@
+id: existing-task-pickup
+description: Work on a seeded task reuses it instead of creating a duplicate
+fixture: node-cli-small
+seed:
+  - { title: "Добавить флаг --upper для вывода заглавными", status: todo }
+turns:
+  - user: "Сделай флаг --upper, который выводит приветствие заглавными буквами, и закоммить."
+expect:
+  created: { max: 0 }
+  tasks:
+    - match: { seed: 0 }
+      status: [done, review]
+      result: non_empty
+  max_nudges: 1

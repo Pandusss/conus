@@ -1,0 +1,2 @@
+{"timestamp":"2026-10-08T10:00:00Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"сделай импорт"}]}}
+{"timestamp":"2026-10-08T10:01:00Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Импорт сделан."}]}}

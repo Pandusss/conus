@@ -1,0 +1,9 @@
+id: qa-no-task
+description: A question about code creates nothing
+fixture: node-cli-small
+turns:
+  - user: "Объясни, как устроена функция greet в src/greet.js и что она возвращает."
+expect:
+  created: { max: 0 }
+  proposed: { max: 0 }
+  max_nudges: 0

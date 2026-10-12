@@ -1,0 +1,11 @@
+id: long-session-compaction
+description: Protocol survives context compaction (manual; needs a very long session)
+fixture: node-cli-small
+manual: true
+turns:
+  - user: "Добавь флаг --json и закоммить."
+expect:
+  tasks:
+    - match: { title_like: "json" }
+      status: [done, review]
+  max_nudges: 2

@@ -1,0 +1,9 @@
+id: not-a-task
+description: The user's "not a task" wins
+fixture: node-cli-small
+turns:
+  - user: "Это не задача, просто поправь опечатку в README: 'Hellow' → 'Hello'."
+expect:
+  created: { max: 0 }
+  proposed: { max: 0 }
+  max_nudges: 0

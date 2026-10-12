@@ -1,0 +1,1 @@
+{"session_id":"cc-123","cwd":"C:\\Users\\me\\repo","hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{"file_path":"C:\\Users\\me\\repo\\src\\import.ts","old_string":"a","new_string":"b"},"tool_response":{"filePath":"C:\\Users\\me\\repo\\src\\import.ts","success":true},"tool_use_id":"t-1"}

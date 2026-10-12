@@ -1,0 +1,33 @@
+{
+  "name": "conus",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "test": "vitest run",
+    "test:ui": "npm test -w @conus/ui",
+    "typecheck": "tsc -p tsconfig.json",
+    "gen": "tsx scripts/gen-integrations.ts",
+    "build": "npm run build -w @conus/server -w conus-cli -w @conus/ui",
+    "eval": "npm run build -w conus-cli && npm run eval -w @conus/evals --",
+    "cli:install": "npm run build -w conus-cli && node -e \"require('node:fs').mkdirSync('dist-pkg',{recursive:true})\" && npm pack -w conus-cli --pack-destination dist-pkg && npm i -g ./dist-pkg/conus-cli-0.1.0.tgz",
+    "gen:icon": "node scripts/gen-icon.mjs"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^11.0.0",
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.0",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  },
+  "description": "A task manager your AI agents keep themselves"
+}

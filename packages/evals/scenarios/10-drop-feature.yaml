@@ -1,0 +1,13 @@
+id: drop-feature
+description: Abandoning a feature drops its task
+fixture: node-cli-small
+seed:
+  - { title: "Добавить экспорт истории приветствий в PDF", status: todo }
+turns:
+  - user: "Слушай, экспорт в PDF мы делать не будем — отказываемся от этой идеи."
+expect:
+  created: { max: 0 }
+  tasks:
+    - match: { seed: 0 }
+      status: [dropped]
+  max_nudges: 1

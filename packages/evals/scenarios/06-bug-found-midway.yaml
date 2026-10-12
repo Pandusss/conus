@@ -1,0 +1,15 @@
+id: bug-found-midway
+description: An unrelated failing test becomes a bug task, not a fix
+fixture: node-cli-small
+overlay: buggy-time
+turns:
+  - user: "Добавь флаг --name-from-env, который берёт имя из переменной окружения GREET_NAME, и закоммить. Если заметишь проблемы в других частях кода — не чини их сейчас."
+expect:
+  created: { min: 2, max: 2 }
+  tasks:
+    - match: { title_like: "env|окружени|GREET_NAME" }
+      status: [done, review]
+    - match: { title_like: "дат|date|time|врем|месяц|month" }
+      type: bug
+      status: [todo]
+  max_nudges: 1

@@ -1,0 +1,12 @@
+id: parallel-sessions
+description: Two concurrent sessions on the same work do not create duplicates
+fixture: node-cli-small
+parallel_sessions: 2
+agents: [claude]
+turns:
+  - user: "Добавь в CLI флаг --version, который печатает версию из package.json. Закоммить."
+expect:
+  tasks:
+    - match: { title_like: "version|верси" }
+      max_matching: 1
+  max_nudges: 2

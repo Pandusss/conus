@@ -1,0 +1,41 @@
+{
+  "name": "conus-cli",
+  "version": "0.1.0",
+  "description": "Connect Claude Code, Codex and Gemini CLI to Conus, a task manager your AI agents keep themselves.",
+  "license": "MIT",
+  "keywords": [
+    "conus",
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "mcp",
+    "ai-agents",
+    "task-manager",
+    "hooks"
+  ],
+  "homepage": "https://github.com/Pandusss/conus#readme",
+  "bugs": {
+    "url": "https://github.com/Pandusss/conus/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pandusss/conus.git",
+    "directory": "packages/cli"
+  },
+  "type": "module",
+  "bin": {
+    "conus": "dist/conus.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "@conus/protocol": "0.1.0"
+  }
+}

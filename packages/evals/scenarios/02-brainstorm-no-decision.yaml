@@ -1,0 +1,9 @@
+id: brainstorm-no-decision
+description: Thinking aloud about options creates nothing
+fixture: node-cli-small
+turns:
+  - user: "Как думаешь, что лучше для конфигурации этого CLI — переменные окружения или файл .greetrc? Просто порассуждай, ничего не меняй."
+expect:
+  created: { max: 0 }
+  proposed: { max: 1 }
+  max_nudges: 0
