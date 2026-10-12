@@ -6,6 +6,12 @@
 </h1>
 <p align="center"><b>Менеджер задач, который ведут сами ИИ-агенты.</b></p>
 <p align="center"><a href="README.md">English</a> · Русский</p>
+<p align="center">
+  <a href="https://github.com/Pandusss/conus/actions/workflows/ci.yml"><img src="https://github.com/Pandusss/conus/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.npmjs.com/package/conus-cli"><img src="https://img.shields.io/npm/v/conus-cli?label=conus-cli&color=4f46e5" alt="conus-cli on npm"></a>
+  <a href="https://github.com/Pandusss/conus/pkgs/container/conus"><img src="https://img.shields.io/badge/docker-ghcr.io%2Fpandusss%2Fconus-4f46e5?logo=docker&logoColor=white" alt="Docker image"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Pandusss/conus?color=4f46e5" alt="MIT license"></a>
+</p>
 
 Вы работаете с Claude Code или Codex как обычно и не упоминаете менеджер задач. Агент сам заводит основные задачи,
 берёт их в работу, отмечает блокировки, закрывает с итогом и отменяет то, от чего вы отказались. После сессии

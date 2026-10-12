@@ -6,6 +6,12 @@
 </h1>
 <p align="center"><b>A task manager your AI agents keep themselves.</b></p>
 <p align="center">English · <a href="README.ru.md">Русский</a></p>
+<p align="center">
+  <a href="https://github.com/Pandusss/conus/actions/workflows/ci.yml"><img src="https://github.com/Pandusss/conus/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.npmjs.com/package/conus-cli"><img src="https://img.shields.io/npm/v/conus-cli?label=conus-cli&color=4f46e5" alt="conus-cli on npm"></a>
+  <a href="https://github.com/Pandusss/conus/pkgs/container/conus"><img src="https://img.shields.io/badge/docker-ghcr.io%2Fpandusss%2Fconus-4f46e5?logo=docker&logoColor=white" alt="Docker image"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Pandusss/conus?color=4f46e5" alt="MIT license"></a>
+</p>
 
 You work with Claude Code or Codex as usual and never mention a task manager. The agent creates the main tasks,
 takes them into work, marks what blocks it, completes them with a result and drops what you abandoned. After a
