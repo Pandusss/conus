@@ -73,8 +73,10 @@ jobs:
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "Conus $version" --notes-file notes.md
           gh release upload "$GITHUB_REF_NAME" dist-pkg/conus-cli.tgz --clobber
 
+  # On once conus-cli exists on npm with this repository as its trusted publisher:
+  # Settings → Secrets and variables → Actions → Variables → NPM_PUBLISH = true.
   npm:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && vars.NPM_PUBLISH == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
