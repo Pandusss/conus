@@ -68,6 +68,9 @@ npm install -g conus-cli
 conus setup https://conus.example.com conus_xxxxxxxx
 ```
 
+Нет доступа к реестру npm? Пакет приложен к каждому релизу:
+`npm install -g https://github.com/Pandusss/conus/releases/latest/download/conus-cli.tgz`.
+
 `conus setup` входит и подключает всех найденных агентов: плагин Conus в **Claude Code** (через команду `claude`;
 если её нет — печатает две команды `/plugin`, которые нужно выполнить в Claude Code), MCP-сервер, хуки и скилл в
 **Codex**, MCP-сервер в **Gemini CLI**. Предлагает добавить короткое правило Conus в глобальные инструкции каждого

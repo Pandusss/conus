@@ -1,7 +1,8 @@
 name: Release
 
 # Push a tag like v0.2.0: the server image goes to ghcr.io/pandusss/conus (the version and latest),
-# conus-cli goes to npm. Pushes to main publish the image as :edge.
+# conus-cli goes to npm through trusted publishing (configured on npmjs.com for this repository and release.yml).
+# Pushes to main publish the image as :edge.
 on:
   push:
     tags: ['v*']
@@ -46,13 +47,39 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # The CLI as a release asset too, for machines that cannot reach the npm registry:
+  #   npm install -g https://github.com/Pandusss/conus/releases/latest/download/conus-cli.tgz
+  cli-asset:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w conus-cli
+      - run: npm pack -w conus-cli --pack-destination dist-pkg && mv dist-pkg/conus-cli-*.tgz dist-pkg/conus-cli.tgz
+      - name: Release with the notes from CHANGELOG.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '$0 ~ "^## " v {on=1; next} /^## / && on {exit} on' CHANGELOG.md > notes.md
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "Conus $version" --notes-file notes.md
+          gh release upload "$GITHUB_REF_NAME" dist-pkg/conus-cli.tgz --clobber
+
   npm:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
-      id-token: write # npm provenance
+      id-token: write # npm trusted publishing (OIDC): no token to store or renew
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -60,10 +87,16 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
           cache: npm
+      # Trusted publishing needs npm 11.5.1 or newer.
+      - run: npm install -g npm@11
       - run: npm ci
       - name: The tag matches the package version
         run: test "v$(node -p "require('./packages/cli/package.json').version")" = "$GITHUB_REF_NAME"
-      - run: npm run build -w conus-cli
-      - run: npm publish -w conus-cli --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Skip a version that is already on npm
+        id: published
+        run: |
+          if npm view "conus-cli@${GITHUB_REF_NAME#v}" version >/dev/null 2>&1; then echo "skip=true" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.published.outputs.skip != 'true'
+        run: npm run build -w conus-cli
+      - if: steps.published.outputs.skip != 'true'
+        run: npm publish -w conus-cli --access public

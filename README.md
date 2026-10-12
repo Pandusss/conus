@@ -70,6 +70,9 @@ npm install -g conus-cli
 conus setup https://conus.example.com conus_xxxxxxxx
 ```
 
+No access to the npm registry? Every release also carries the package:
+`npm install -g https://github.com/Pandusss/conus/releases/latest/download/conus-cli.tgz`.
+
 `conus setup` logs in, then connects every agent it finds: the Conus plugin in **Claude Code** (through the
 `claude` CLI; without it, it prints the two `/plugin` commands to run in Claude Code), the MCP server, hooks and
 skill in **Codex**, the MCP server in **Gemini CLI**. It offers to add a short Conus rule to each agent's global

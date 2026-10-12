@@ -56,7 +56,7 @@ editing `packages/protocol` (the plugin's skill), the MCP bridge (`packages/cli/
 
 Bump `version` in `packages/cli/package.json` (the CLI reads it from there), add a `CHANGELOG.md` entry, merge,
 then tag: `git tag v0.2.0 && git push origin v0.2.0`. The release workflow publishes the server image to
-`ghcr.io/pandusss/conus` and `conus-cli` to npm.
+`ghcr.io/pandusss/conus` and `conus-cli` to npm (trusted publishing from the workflow, no token in the repository).
 
 ## License
 
