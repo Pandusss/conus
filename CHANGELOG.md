@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `install.sh` works without a terminal (CI, `ssh` without a tty): it used to stop at the domain question.
+- A workflow runs the newcomer's path on a clean machine after every release and weekly: the installer, the
+  first-run setup, `conus-cli` from npm, `conus setup` and the MCP bridge.
+
 ## 0.2.2 — 2026-10-13
 
 - `conus-cli` is on the npm registry: `npm install -g conus-cli` in the web app, the READMEs and the installer.

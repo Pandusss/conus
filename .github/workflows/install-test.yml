@@ -1,0 +1,58 @@
+name: Install test
+
+# A newcomer's path on a clean machine, exactly as the README tells it: the installer from main, the first-run
+# setup in the "browser", an agent token, conus-cli from npm on a fresh Node, `conus setup` and the MCP bridge.
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+  schedule:
+    - cron: '17 5 * * 1' # weekly
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: "The README's command (no terminal, so no questions; local mode)"
+        run: curl -fsSL https://raw.githubusercontent.com/Pandusss/conus/main/deploy/install.sh | sh
+
+      - name: What the installer wrote
+        run: |
+          ls conus
+          sed -E 's/^(POSTGRES_PASSWORD=).*/\1***/' conus/.env
+          grep -q '^CONUS_LANG=en$' conus/.env
+
+      - name: First run in the browser — setup code, owner password — then an agent
+        run: |
+          set -euo pipefail
+          base=http://127.0.0.1:8080
+          test "$(curl -fsS $base/api/ui/setup)" = '{"needed":true}'
+          code=$(sed -n 's/^CONUS_SETUP_CODE=//p' conus/.env)
+          curl -fsS -c jar -H 'content-type: application/json' -d "{\"code\":\"$code\",\"password\":\"install-test-password\"}" $base/api/ui/setup
+          test "$(curl -fsS $base/api/ui/setup)" = '{"needed":false}'
+          csrf=$(awk '$6=="conus_csrf"{print $7}' jar)
+          token=$(curl -fsS -b jar -H "x-csrf-token: $csrf" -H 'content-type: application/json' \
+            -d '{"name":"claude-code@clean-box","kind":"claude_code"}' $base/api/ui/agents | jq -r .token)
+          echo "::add-mask::$token"
+          echo "TOKEN=$token" >> "$GITHUB_ENV"
+
+      - name: An agent machine — conus-cli from npm on a fresh Node, conus setup, the MCP bridge
+        run: |
+          docker run --rm --network host -e TOKEN node:22-alpine sh -euc '
+            npm install -g conus-cli >/dev/null 2>&1
+            conus --version
+            mkdir -p /root/.codex /root/.gemini
+            conus setup http://127.0.0.1:8080 "$TOKEN" --yes
+            grep -q "\[mcp_servers.conus\]" /root/.codex/config.toml
+            printf "%s\n" "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{},\"clientInfo\":{\"name\":\"install-test\",\"version\":\"1\"}}}" \
+              | conus mcp | tee /tmp/mcp.json
+            grep -q "\"name\":\"conus\"" /tmp/mcp.json
+          '
+
+      - name: Server log
+        if: always()
+        run: cd conus && docker compose logs app --tail 30

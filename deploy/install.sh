@@ -23,9 +23,10 @@ fetch() {
   mv "$1.tmp" "$1"
 }
 
-# Answers come from the terminal even when the script itself arrives through a pipe (curl | sh).
+# Answers come from the terminal even when the script itself arrives through a pipe (curl | sh). Without one
+# (CI, ssh without a tty) /dev/tty exists but cannot be opened: then there is no question and the answer is empty.
 ask() {
-  if [ -r /dev/tty ] && [ -w /dev/tty ]; then
+  if (exec < /dev/tty) 2>/dev/null; then
     printf '%s' "$1" > /dev/tty
     IFS= read -r answer < /dev/tty || answer=''
     printf '%s' "$answer"
