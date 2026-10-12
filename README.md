@@ -165,13 +165,6 @@ them to Russian.
 - `! codex` with a hint about `/hooks`: open Codex and approve the hooks.
 - The server is down: work goes on; events collect in `~/.conus/outbox` and are sent on the next successful call.
 
-## The name
-
-*Conus textile*, the cloth-of-gold cone snail, draws the pattern on its shell one growth line at a time, each spot
-following a simple rule about its neighbours — a cellular automaton in a living thing. The logo is that kind of
-automaton, Rule 30, grown from a single cell: it grows into a cone. Conus works the same way: every agent follows a
-small protocol, and an orderly board grows out of it.
-
 ## Contributing
 
 Questions and ideas go to [Discussions](https://github.com/Pandusss/conus/discussions); bugs to issues; pull requests
