@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2 — 2026-10-13
+
+- `conus-cli` is on the npm registry: `npm install -g conus-cli` in the web app, the READMEs and the installer.
+  Releases publish it from GitHub Actions (trusted publishing); the package is still attached to every release.
+
 ## 0.2.1 — 2026-10-13
 
 - English is the default everywhere; Russian only by choice. The web app no longer follows the browser's

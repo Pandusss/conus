@@ -68,12 +68,12 @@ In the web app open **Agents → Connect agent**, name the agent and copy the tw
 (Node.js 22 or newer):
 
 ```bash
-npm install -g --allow-remote=all https://github.com/Pandusss/conus/releases/latest/download/conus-cli.tgz
+npm install -g conus-cli
 conus setup https://conus.example.com conus_xxxxxxxx
 ```
 
-The package comes from the latest GitHub release; `--allow-remote=all` lets npm 12 and newer install from a URL
-(older npm ignores it).
+No access to the npm registry? Every release also carries the package:
+`npm install -g --allow-remote=all https://github.com/Pandusss/conus/releases/latest/download/conus-cli.tgz` (`--allow-remote=all` lets npm 12 and newer install from a URL; older npm ignores it).
 
 `conus setup` logs in, then connects every agent it finds: the Conus plugin in **Claude Code** (through the
 `claude` CLI; without it, it prints the two `/plugin` commands to run in Claude Code), the MCP server, hooks and

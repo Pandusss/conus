@@ -1,6 +1,6 @@
 {
   "name": "conus-cli",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Connect Claude Code, Codex and Gemini CLI to Conus, a task manager your AI agents keep themselves.",
   "license": "MIT",
   "keywords": [

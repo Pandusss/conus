@@ -66,12 +66,12 @@ curl -fsSL https://raw.githubusercontent.com/Pandusss/conus/main/deploy/install.
 (Node.js 22 или новее):
 
 ```bash
-npm install -g --allow-remote=all https://github.com/Pandusss/conus/releases/latest/download/conus-cli.tgz
+npm install -g conus-cli
 conus setup https://conus.example.com conus_xxxxxxxx
 ```
 
-Пакет берётся из последнего релиза на GitHub; `--allow-remote=all` разрешает npm 12 и новее ставить пакет по ссылке
-(старые версии npm этот флаг пропускают).
+Нет доступа к реестру npm? Пакет приложен к каждому релизу:
+`npm install -g --allow-remote=all https://github.com/Pandusss/conus/releases/latest/download/conus-cli.tgz` (`--allow-remote=all` разрешает npm 12 и новее ставить пакет по ссылке; старые версии npm флаг пропускают).
 
 `conus setup` входит и подключает всех найденных агентов: плагин Conus в **Claude Code** (через команду `claude`;
 если её нет — печатает две команды `/plugin`, которые нужно выполнить в Claude Code), MCP-сервер, хуки и скилл в
