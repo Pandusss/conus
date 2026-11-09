@@ -1,4 +1,4 @@
-import { createJudgeFromEnv, parseLang, type Judge, type Lang } from '@conus/core';
+import { createJudgeFromEnv, createManagerLlmFromEnv, parseLang, type Judge, type Lang, type ManagerLlm } from '@conus/core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -9,6 +9,10 @@ export interface ServerConfig {
   lang: Lang;
   /** First-run setup code from CONUS_SETUP_CODE (an installer can generate and show it); random when unset. */
   setupCode?: string | null;
+  /** The manager's model (ANTHROPIC_API_KEY, CONUS_MANAGER_MODEL); a disabled stand-in without a key. */
+  manager?: ManagerLlm;
+  /** CONUS_TELEGRAM_BOT_TOKEN: the owner's bot for digests, notices and forwarded correspondence. */
+  telegramToken?: string | null;
 }
 
 /** Largest delay setInterval honours; bigger values silently become 1 ms. */
@@ -41,5 +45,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     judge: createJudgeFromEnv(env),
     lang: parseLang(env.CONUS_LANG),
     setupCode: env.CONUS_SETUP_CODE?.trim() || null,
+    manager: createManagerLlmFromEnv(env),
+    telegramToken: env.CONUS_TELEGRAM_BOT_TOKEN?.trim() || null,
   };
 }

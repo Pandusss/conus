@@ -4,6 +4,7 @@ import { PRIORITY_ORDER, TASK_SELECT, countProposals, mapTask } from './tasks/qu
 import { neutralizeAngles, truncate } from './text';
 import type { Project, Session, Task } from './types';
 import { t } from './lang';
+import { projectFocus } from './manager/review';
 
 export const CONTEXT_MAX = 8000;
 export const STATUS_LINE_MAX = 300;
@@ -59,6 +60,7 @@ export async function renderSessionContext(
   const open = openRows.rows.map(mapTask).filter((t) => !skip.has(t.id));
   const blocked = open.filter((t) => t.status === 'blocked');
   const proposals = await countProposals(db, project.id);
+  const focus = await projectFocus(db, project.id);
 
   const head = [
     `<task-manager session="${attr(session.ref)}" project="${attr(project.key)}" agent="${attr(agentName)}">`,
@@ -67,6 +69,8 @@ export async function renderSessionContext(
   ];
   if (left.length) head.push(`Left from previous sessions: ${left.map((t) => `${label(t)} — review (auto summary)`).join('; ')}`);
   head.push(`In progress (this agent): ${mine.length ? mine.map(label).join('; ') : '—'}`);
+  // The owner's manager reviews all projects daily; its picks here are a hint for "what next", not an order.
+  if (focus.length) head.push(`Manager's focus in this project today: ${focus.map((f) => `${safe(f.ref, 40)} «${safe(f.title, 100)}» — ${safe(f.why, 160)}`).join('; ')}`);
   const blockedLines = blocked.slice(0, 10).map((t) => `- ${label(t)} — ${safe(t.blockReason ?? '', 150)}`);
   const footer = [
     `Proposals awaiting the user: ${proposals}`,

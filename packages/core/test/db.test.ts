@@ -43,8 +43,8 @@ describe('migrations', () => {
       `SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name COLLATE "C"`,
     );
     expect(rows.map((r) => r.table_name)).toEqual([
-      'agents', 'idempotency_keys', 'links', 'nudges', 'owner', 'owner_sessions', 'projects',
-      'schema_migrations', 'session_activity', 'sessions', 'task_events', 'tasks',
+      'agents', 'idempotency_keys', 'intake_batches', 'links', 'manager_reviews', 'nudges', 'owner', 'owner_sessions', 'owner_settings',
+      'projects', 'schema_migrations', 'session_activity', 'sessions', 'task_events', 'tasks', 'telegram_inbox',
     ]);
   });
 

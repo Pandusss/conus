@@ -104,4 +104,34 @@ describe('Proposals errors and pending state', () => {
     expect((await screen.findByRole('alert')).textContent).toBe('Ошибка сервера — попробуй ещё раз');
     expect(screen.queryByText('Предложений нет')).toBeNull();
   });
+
+  it('sorts pasted correspondence into proposals and shows what came out', async () => {
+    const f = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+      const u = String(url);
+      if (u === '/api/ui/settings') return json({ manager: { enabled: true, model: 'claude-opus-5-5' } });
+      if (u === '/api/ui/intake') {
+        return json({ batch: {
+          id: 1, source: 'web', status: 'done', summary: 'Клиент просит экспорт.', error: null, createdAt: '',
+          tasks: [taskDto({ id: 'n1', ref: 'WB-9', title: 'Починить экспорт в Safari', status: 'proposed', priority: 'urgent' })],
+          duplicates: [{ title: 'Тёмная тема', ref: 'WB-2', existingTitle: 'Тёмная тема для графиков' }],
+        } });
+      }
+      return json({ tasks: [] });
+    });
+    renderPage(<Proposals />);
+    await userEvent.type(await screen.findByLabelText('Переписка или заметки'), 'Анна: экспорт сломан');
+    await userEvent.click(screen.getByRole('button', { name: 'Разложить по проектам' }));
+    expect(await screen.findByText('Клиент просит экспорт.')).toBeTruthy();
+    expect(screen.getByText('Починить экспорт в Safari')).toBeTruthy();
+    expect(screen.getByText('Тёмная тема для графиков')).toBeTruthy();
+    expect(mutations(f)).toEqual([{ call: 'POST /api/ui/intake', body: '{"text":"Анна: экспорт сломан"}' }]);
+  });
+
+  it('says the manager is needed when there is no key', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) =>
+      json(String(url) === '/api/ui/settings' ? { manager: { enabled: false, model: null } } : { tasks: [] }));
+    renderPage(<Proposals />);
+    expect(await screen.findByText(/Для разбора переписки нужен главный агент/)).toBeTruthy();
+    expect(screen.queryByLabelText('Переписка или заметки')).toBeNull();
+  });
 });

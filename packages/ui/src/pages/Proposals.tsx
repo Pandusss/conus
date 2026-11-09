@@ -4,6 +4,7 @@ import { Check, Inbox, Quote, X } from 'lucide-react';
 import { api, type TaskDto } from '../api';
 import { ReasonDialog } from '../components/Dialog';
 import { EmptyState } from '../components/EmptyState';
+import { IntakePanel } from '../components/IntakePanel';
 import { ErrorLine } from '../components/ErrorLine';
 import { useToast } from '../components/Toast';
 import { useT } from '../i18n';
@@ -34,6 +35,7 @@ export function Proposals() {
         <h1>{t.proposals.title} {list.length > 0 && <span className="count count-lg">{list.length}</span>}</h1>
       </div>
       <p className="page-sub">{t.proposals.sub}</p>
+      <IntakePanel />
       <ErrorLine error={act.error ?? q.error} />
       {!list.length && !q.isLoading && !q.error && (
         <EmptyState icon={<Inbox size={28} />} title={t.proposals.emptyTitle} text={t.proposals.emptyText} />

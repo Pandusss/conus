@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Activity, Bot, FolderKanban, Inbox, LayoutDashboard, LayoutGrid, LogOut, Menu as MenuIcon, Moon, Sun, X } from 'lucide-react';
+import { Activity, Bot, FolderKanban, Inbox, LayoutDashboard, LayoutGrid, LogOut, Menu as MenuIcon, Moon, SlidersHorizontal, Sun, X } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { api, type ProjectDto, type SessionDto, type TaskDto } from '../api';
 import { BRAND_CELLS } from '../brand-cells';
@@ -81,6 +81,7 @@ function Sidebar({ open, onClose, onLogout, loggingOut }: { open: boolean; onClo
         </NavLink>
         <NavLink to="/agents" className={item}><Bot size={16} aria-hidden />{t.shell.agents}</NavLink>
         <NavLink to="/projects" className={item}><FolderKanban size={16} aria-hidden />{t.shell.projects}</NavLink>
+        <NavLink to="/settings" className={item}><SlidersHorizontal size={16} aria-hidden />{t.shell.settings}</NavLink>
       </nav>
       <div className="sidebar-section">
         <div className="sidebar-title">{t.shell.projects}</div>

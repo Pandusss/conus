@@ -123,10 +123,29 @@ conus config set send_text false
 
 The token lives in `~/.conus/config.json`, readable by its owner only; the server stores only its SHA-256 hash, and
 you can revoke it in the web app. The optional judge (see below) sends the turn's facts and excerpts to the
-Anthropic API.
+Anthropic API. The optional manager sends task titles, statuses, block reasons and source quotes, and the
+correspondence you give it, to the Anthropic API.
 
 To stop tracking in one repository, run `conus disable` in it (`conus enable` turns it back on). Folders outside git
 are never tracked.
+
+## The manager and Telegram
+
+The web app opens on an **Overview** of every project: who works on what right now, what is blocked and why, what
+waits for your check, what is next, and deadlines. Tasks have a priority and a due date; agents see their project's
+tasks most important first.
+
+With an Anthropic API key on the server, a **manager** works on top of the agents:
+
+- every morning it reviews all open tasks, sets priorities (never ones you set yourself) and picks the focus for the
+  day, which agents see at session start;
+- give it correspondence with a client, a colleague or an investor (paste it under Proposals, or forward it to the
+  bot) and it files the work as proposals in the right projects, with a priority, a date and the quote it came from.
+
+With a **Telegram bot** it reaches you: a morning digest, a message when a task waits for your check (accept or send it
+back with a button) or an agent is blocked, quiet at night. Create a bot with [@BotFather](https://t.me/BotFather), put
+its token in `CONUS_TELEGRAM_BOT_TOKEN`, restart, then press **Link Telegram** in Settings. The bot polls Telegram,
+so the server needs no public webhook, and it talks only to the chat you linked.
 
 ## Configuration
 
@@ -143,6 +162,8 @@ are never tracked.
 | `CONUS_SETUP_CODE` | generated | The code for the first visit. Empty: a random one is printed in `docker compose logs app`. |
 | `ANTHROPIC_API_KEY` | empty | Turns on the judge: an LLM check at the end of a turn and short summaries of tasks the janitor sends to review. Without it the deterministic checks still run. |
 | `CONUS_JUDGE_ENABLED`, `CONUS_JUDGE_MODEL` | `true`, `claude-haiku-5-5` | The judge switch and model. |
+| `CONUS_MANAGER_ENABLED`, `CONUS_MANAGER_MODEL` | `true`, `claude-opus-5-5` | The manager (daily review, correspondence into proposals) runs when `ANTHROPIC_API_KEY` is set; this switches it off or picks another model. |
+| `CONUS_TELEGRAM_BOT_TOKEN` | empty | The owner's Telegram bot: digests, notices, forwarded correspondence. The schedule and quiet hours are in Settings. |
 
 Update: run the installer again, or `docker compose pull && docker compose up -d` in the `conus` folder.
 Back up: `docker compose exec db pg_dump -U conus conus > conus.sql`.

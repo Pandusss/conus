@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The manager**: with `ANTHROPIC_API_KEY` set, Conus reviews all open tasks every morning (priorities — never ones
+  you set — today's focus, likely duplicates, stale and vague tasks, deadlines at risk) and turns correspondence you
+  paste under Proposals or forward to the bot into proposals in the right projects, with a priority, a date and the
+  quote. The overview shows the latest review; agents see the focus for their project at session start. Claude Opus
+  5.5 by default (`CONUS_MANAGER_MODEL`).
+- **Telegram**: set `CONUS_TELEGRAM_BOT_TOKEN` and link your chat in the new Settings page: a morning digest, notices
+  when a task waits for your check (accept or return it with a button) or an agent is blocked, quiet hours, `/digest`
+  and `/review`. Long polling: no public webhook.
+- Tasks can be moved to another project (the drawer's menu, or the bot's 📁 button).
 - The web app opens on an **Overview**: every project on one screen — what is in progress and which agent is on it,
   what is blocked and why, what waits for your check, what is next, and a «Waiting for you» list across projects
   (checks, blockers, deadlines, proposals). Quiet projects fold away. The board moved to `/board`.

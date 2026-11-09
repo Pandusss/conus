@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router-dom';
 import type { OverviewDto, ProjectOverviewDto } from '../api';
@@ -34,8 +34,8 @@ const busy: OverviewDto = {
   attention: { review: [check], blocked: [stuck], dated: [stuck, next], proposals: 2 },
 };
 
-function mount(o: OverviewDto) {
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async () => json(o));
+function mount(o: OverviewDto, review: unknown = { review: null, manager: { enabled: false, model: null } }) {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => json(String(url) === '/api/ui/manager/review' ? review : o));
   return renderPage(<Routes><Route path="/" element={<Overview />} /><Route path="/board" element={<p>доска</p>} /></Routes>);
 }
 const tile = (label: string) => screen.getByText(label, { selector: '.tile-label' }).closest<HTMLElement>('.tile')!;
@@ -92,5 +92,33 @@ describe('Overview', () => {
   it('explains an empty Conus', async () => {
     mount({ projects: [], attention: { review: [], blocked: [], dated: [], proposals: 0 } });
     expect(await screen.findByText('Проектов пока нет')).toBeTruthy();
+  });
+
+  it('shows the manager: today’s focus, priority changes and notes, and runs a review on demand', async () => {
+    const review = {
+      id: 1, trigger: 'daily', model: 'claude-opus-5-5', summary: 'Сначала выплаты.', createdAt: new Date().toISOString(),
+      focus: [{ taskId: 'c', ref: 'API-1', title: 'Выплаты через Stripe', why: 'клиент ждёт' }],
+      changes: [{ taskId: 'd', ref: 'WB-3', title: 'НДС для ЕС', from: 'normal', to: 'high', reason: 'срок сегодня', applied: true }],
+      findings: [{ kind: 'stale', refs: ['WB-2'], note: 'неделю без движения' }],
+    };
+    const f = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+      if (String(url) === '/api/ui/manager/review') return json({ review, manager: { enabled: true, model: 'claude-opus-5-5' } });
+      if ((init as RequestInit | undefined)?.method === 'POST') return json({ review, manager: { enabled: true, model: 'claude-opus-5-5' } });
+      return json(busy);
+    });
+    renderPage(<Routes><Route path="/" element={<Overview />} /></Routes>);
+    const panel = await screen.findByRole('region', { name: 'Главный агент' });
+    expect(within(panel).getByText('Сначала выплаты.')).toBeTruthy();
+    expect(within(panel).getByRole('link', { name: /Выплаты через Stripe/ }).getAttribute('href')).toBe('/tasks/c');
+    expect(within(panel).getByText('клиент ждёт')).toBeTruthy();
+    expect(within(panel).getByText('Приоритеты изменены: 1')).toBeTruthy();
+    expect(within(panel).getByText('Заметки (1)')).toBeTruthy();
+    await userEvent.click(within(panel).getByRole('button', { name: 'Провести ревизию' }));
+    await waitFor(() => expect(f.mock.calls.some(([u, i]) => String(u) === '/api/ui/manager/review' && (i as RequestInit)?.method === 'POST')).toBe(true));
+  });
+
+  it('explains what the manager needs when it is off', async () => {
+    mount(busy);
+    expect(await screen.findByText(/нужен ключ Anthropic API на сервере/)).toBeTruthy();
   });
 });

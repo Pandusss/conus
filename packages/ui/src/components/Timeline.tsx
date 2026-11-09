@@ -24,7 +24,7 @@ const EVENT_TONE: Record<string, string> = {
 };
 
 export const actorName = (e: Pick<EventDto, 'actorKind' | 'actorName'>, t: Messages): string =>
-  e.actorKind === 'user' ? t.actor.you : e.actorKind === 'system' ? t.actor.system : e.actorName ?? t.actor.agent;
+  e.actorKind === 'user' ? t.actor.you : e.actorKind === 'system' ? t.actor.system : e.actorKind === 'manager' ? t.actor.manager : e.actorName ?? t.actor.agent;
 
 function PriorityOrDash({ value }: { value: unknown }) {
   if (isPriority(value)) return <PriorityBadge priority={value} always />;

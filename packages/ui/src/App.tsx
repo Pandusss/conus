@@ -13,6 +13,7 @@ import { Projects } from './pages/Projects';
 import { Proposals } from './pages/Proposals';
 import { SessionPage } from './pages/SessionPage';
 import { Sessions } from './pages/Sessions';
+import { Settings } from './pages/Settings';
 import { TaskDrawer } from './pages/TaskDrawer';
 import { ProjectFilterProvider } from './project-filter';
 
@@ -54,6 +55,7 @@ export function App() {
             <Route path="/sessions/:id" element={<SessionPage />} />
             <Route path="/agents" element={<Agents />} />
             <Route path="/projects" element={<Projects />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Shell>

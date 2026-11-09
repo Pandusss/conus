@@ -1,6 +1,8 @@
 export type DomainErrorCode =
   | 'not_found' | 'invalid_transition' | 'conflict_claimed' | 'conflict_version'
-  | 'validation' | 'unauthorized' | 'forbidden';
+  | 'validation' | 'unauthorized' | 'forbidden'
+  /** A dependency is missing or failed: the manager's model is not configured or did not answer. */
+  | 'unavailable';
 
 export class DomainError extends Error {
   constructor(

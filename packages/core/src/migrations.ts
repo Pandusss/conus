@@ -158,4 +158,68 @@ ALTER TABLE tasks ADD COLUMN due_on date;
 CREATE INDEX tasks_due_idx ON tasks(due_on) WHERE due_on IS NOT NULL AND deleted_at IS NULL;
 `,
   },
+  {
+    // The manager: the owner's settings (schedule, Telegram), correspondence turned into proposals, daily reviews.
+    name: '0003_manager',
+    sql: /* sql */ `
+ALTER TABLE task_events DROP CONSTRAINT task_events_actor_kind_check;
+ALTER TABLE task_events ADD CONSTRAINT task_events_actor_kind_check CHECK (actor_kind IN ('agent','user','system','manager'));
+
+CREATE TABLE owner_settings (
+  id int PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  time_zone text NOT NULL DEFAULT 'UTC',
+  digest_time text NOT NULL DEFAULT '09:00' CHECK (digest_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'),
+  quiet_from text NOT NULL DEFAULT '22:00' CHECK (quiet_from ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'),
+  quiet_to text NOT NULL DEFAULT '08:00' CHECK (quiet_to ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'),
+  notify_review boolean NOT NULL DEFAULT true,
+  notify_blocked boolean NOT NULL DEFAULT true,
+  manager_auto boolean NOT NULL DEFAULT true,
+  telegram_chat_id bigint,
+  telegram_username text,
+  telegram_link_hash text,
+  telegram_link_expires_at timestamptz,
+  telegram_offset bigint NOT NULL DEFAULT 0,
+  last_digest_on date,
+  last_review_on date,
+  -- task_events up to this id have been considered for notifications (starts at the current end: no backlog)
+  notified_event_id bigint NOT NULL DEFAULT 0,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+INSERT INTO owner_settings(id, notified_event_id) VALUES (1, COALESCE((SELECT max(id) FROM task_events), 0));
+
+CREATE TABLE intake_batches (
+  id bigserial PRIMARY KEY,
+  source text NOT NULL CHECK (source IN ('telegram','web')),
+  status text NOT NULL CHECK (status IN ('done','failed')),
+  input text NOT NULL,
+  summary text,
+  error text,
+  task_ids uuid[] NOT NULL DEFAULT '{}',
+  duplicates jsonb NOT NULL DEFAULT '[]',
+  telegram_message_id bigint,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE telegram_inbox (
+  id bigserial PRIMARY KEY,
+  text text NOT NULL,
+  author text,
+  received_at timestamptz NOT NULL DEFAULT now(),
+  processed_at timestamptz,
+  batch_id bigint REFERENCES intake_batches(id)
+);
+CREATE INDEX telegram_inbox_pending_idx ON telegram_inbox(received_at) WHERE processed_at IS NULL;
+
+CREATE TABLE manager_reviews (
+  id bigserial PRIMARY KEY,
+  trigger text NOT NULL CHECK (trigger IN ('daily','owner')),
+  model text NOT NULL,
+  summary text NOT NULL,
+  focus jsonb NOT NULL DEFAULT '[]',
+  changes jsonb NOT NULL DEFAULT '[]',
+  findings jsonb NOT NULL DEFAULT '[]',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+`,
+  },
 ];

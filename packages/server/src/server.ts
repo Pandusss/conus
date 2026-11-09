@@ -1,9 +1,10 @@
-import { createDb, hasOwner, migrate, runJanitor, type Db } from '@conus/core';
+import { NullManagerLlm, createDb, hasOwner, migrate, runJanitor, type Db } from '@conus/core';
 import { getRequestListener } from '@hono/node-server';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createApp } from './app';
 import type { ServerConfig } from './config';
+import { startManager } from './manager/run';
 import { createMcpHandler } from './mcp';
 import { agentRateLimiter } from './rate-limit';
 import { newSetupCode } from './setup-code';
@@ -14,7 +15,8 @@ export async function startServer(cfg: ServerConfig): Promise<{ url: string; db:
   const setupCode = (await hasOwner(db)) ? null : (cfg.setupCode || newSetupCode());
   // One per-agent budget for hooks and MCP together (spec §11).
   const agentLimiter = agentRateLimiter();
-  const app = createApp({ db, judge: cfg.judge, uiDir: cfg.uiDir, cookieSecure: cfg.cookieSecure, agentLimiter, setupCode });
+  const manager = startManager({ db, llm: cfg.manager ?? new NullManagerLlm(), token: cfg.telegramToken ?? null, publicUrl: cfg.publicUrl });
+  const app = createApp({ db, judge: cfg.judge, uiDir: cfg.uiDir, cookieSecure: cfg.cookieSecure, agentLimiter, setupCode, manager: manager.status, publicUrl: cfg.publicUrl });
   const mcp = createMcpHandler({ db, agentLimiter });
   const listener = getRequestListener(app.fetch);
   const server = http.createServer((req, res) => {
@@ -44,6 +46,7 @@ export async function startServer(cfg: ServerConfig): Promise<{ url: string; db:
     setupCode,
     async close() {
       clearInterval(timer);
+      manager.stop();
       await mcp.close();
       const closed = new Promise((r) => server.close(r));
       server.closeAllConnections?.();

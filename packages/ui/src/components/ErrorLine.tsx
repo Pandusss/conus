@@ -13,6 +13,10 @@ const isKnown = (code: string): code is KnownCode => (KNOWN_CODES as readonly st
 export function errorText(e: unknown, t: Messages): string {
   if (e instanceof HttpError) {
     if (isKnown(e.code)) return t.errors[e.code];
+    if (e.code === 'unavailable') {
+      const reason = String(e.details.reason ?? '');
+      return Object.hasOwn(t.errors.unavailable, reason) ? t.errors.unavailable[reason as keyof Messages['errors']['unavailable']] : e.message;
+    }
     if (e.code === 'error') { // the body was not our JSON error envelope (proxy page, misrouted request)
       if (e.status >= 500) return t.errors.serverStatus(e.status);
       if (e.status === 404) return t.errors.not_found;

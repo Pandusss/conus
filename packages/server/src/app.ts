@@ -1,4 +1,5 @@
 import type { Agent, Db, Judge } from '@conus/core';
+import type { ManagerStatus } from './manager/run';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { toErrorResponse } from './http-errors';
@@ -13,6 +14,9 @@ export interface AppDeps {
   agentLimiter?: RateLimiter;
   /** First run: the code that lets the browser set the owner password; null once an owner existed at start. */
   setupCode?: string | null;
+  /** The manager's model and Telegram bot; absent in tests that do not need them. */
+  manager?: ManagerStatus;
+  publicUrl?: string;
 }
 export type AppEnv = { Variables: { agent: Agent } };
 

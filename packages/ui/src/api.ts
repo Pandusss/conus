@@ -1,5 +1,5 @@
 export class HttpError extends Error {
-  constructor(public status: number, public code: string, message: string) { super(message); }
+  constructor(public status: number, public code: string, message: string, public details: Record<string, unknown> = {}) { super(message); }
 }
 
 export function csrfToken(cookie: string = typeof document === 'undefined' ? '' : document.cookie): string | null {
@@ -19,7 +19,7 @@ export async function api<T>(path: string, init: { method?: string; json?: unkno
     // Not JSON (a proxy's 502 page, or the SPA's index.html from a misrouted request): never leak a SyntaxError.
     throw new HttpError(res.status, 'error', res.statusText);
   }
-  if (!res.ok) throw new HttpError(res.status, body?.error?.code ?? 'error', body?.error?.message ?? res.statusText);
+  if (!res.ok) throw new HttpError(res.status, body?.error?.code ?? 'error', body?.error?.message ?? res.statusText, body?.error?.details ?? {});
   return body as T;
 }
 
@@ -47,7 +47,7 @@ export interface OverviewDto {
   attention: { review: OverviewTaskDto[]; blocked: OverviewTaskDto[]; dated: OverviewTaskDto[]; proposals: number };
 }
 export interface EventDto {
-  id: number; taskId: string; type: string; actorKind: 'agent' | 'user' | 'system'; actorName: string | null; sessionId: string | null;
+  id: number; taskId: string; type: string; actorKind: 'agent' | 'user' | 'system' | 'manager'; actorName: string | null; sessionId: string | null;
   sessionRef: string | null; model: string | null; changes: Record<string, { from: unknown; to: unknown }>; reason: string | null; note: string | null; createdAt: string;
 }
 export interface LinkDto { id: number; kind: 'commit' | 'branch'; ref: string; meta: { subject?: string } }
@@ -61,3 +61,23 @@ export interface SessionDto { id: string; ref: string; agentName: string; projec
  * (the window) come with 'janitor_interventions'.
  */
 export interface WarningDto { kind: string; agentId: string; agentName: string; message: string; count?: number; days?: number }
+
+// ── the manager ──
+export interface SettingsDto {
+  settings: {
+    timeZone: string; digestTime: string; quietFrom: string; quietTo: string; notifyReview: boolean; notifyBlocked: boolean;
+    managerAuto: boolean; telegramUsername: string | null; telegramLinked: boolean;
+  };
+  telegram: { configured: boolean; botUsername: string | null; error: string | null };
+  manager: { enabled: boolean; model: string | null };
+}
+export interface ReviewDto {
+  id: number; trigger: 'daily' | 'owner'; model: string; summary: string; createdAt: string;
+  focus: { taskId: string; ref: string; title: string; why: string }[];
+  changes: { taskId: string; ref: string; title: string; from: Priority; to: Priority; reason: string; applied: boolean }[];
+  findings: { kind: 'duplicate' | 'stale' | 'unclear' | 'risk'; refs: string[]; note: string }[];
+}
+export interface IntakeBatchDto {
+  id: number; source: 'telegram' | 'web'; status: 'done' | 'failed'; summary: string | null; error: string | null;
+  tasks: TaskDto[]; duplicates: { title: string; ref: string; existingTitle: string }[]; createdAt: string;
+}

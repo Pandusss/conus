@@ -1,7 +1,8 @@
 import {
   agentHealthRollup, claimOwner, createAgent, createOwnerSession, deleteOwnerSession, dropTask, getOverview, getSessionOverview, getTaskById, getTaskDetail,
   getProjectByKey, hasOwner, healthWarnings, listAgents, listProjects, listSessionSummaries, listTasks, mergeDuplicate, mergeProjects,
-  ownerEditTask, ownerSetPlanning, ownerSetStatus, renameProject, revokeAgent, softDeleteTask, updateTask, validateOwnerSession,
+  ownerEditTask, ownerMoveTask, ownerSetPlanning, ownerSetStatus, renameProject, revokeAgent, softDeleteTask, updateTask, validateOwnerSession,
+  NullManagerLlm, createTelegramLinkCode, getSettings, latestReview, runIntake, runReview, unlinkTelegram, updateSettings, INTAKE_MAX_CHARS,
   t as tr, verifyOwnerPassword, DomainError, PRIORITIES, STATUSES, type Ctx, type Status,
 } from '@conus/core';
 import { Hono, type Context } from 'hono';
@@ -135,6 +136,11 @@ export function uiRoutes(deps: AppDeps) {
     const b = parseWith(z.object({ status: z.enum(STATUSES), reason: z.string().max(1000).optional() }), await c.req.json());
     return c.json(await ownerSetStatus(user(), { taskId, status: b.status, reason: b.reason }));
   });
+  r.post('/tasks/:id/move', async (c) => {
+    const taskId = idParam(c, 'Task');
+    const { project_id } = parseWith(z.object({ project_id: z.string().uuid() }), await c.req.json());
+    return c.json(await ownerMoveTask(user(), { taskId, projectId: project_id }));
+  });
   r.post('/tasks/:id/merge', async (c) => {
     const duplicateId = idParam(c, 'Task');
     const { into_id } = parseWith(z.object({ into_id: z.string().uuid() }), await c.req.json());
@@ -190,5 +196,67 @@ export function uiRoutes(deps: AppDeps) {
   });
 
   r.get('/health', async (c) => c.json({ warnings: await healthWarnings(db) }));
+
+  // ── the manager: settings, Telegram, correspondence, reviews ──
+  const llm = deps.manager?.llm ?? new NullManagerLlm();
+  // every intake or review is a paid model call: a generous cap that still stops a runaway script
+  const spend = new RateLimiter(40, 3_600_000);
+  const spendOk = (c: Context) => (spend.hit('owner') ? null : tooMany(c));
+  const managerState = () => ({
+    telegram: {
+      configured: !!deps.manager?.telegram.configured,
+      botUsername: deps.manager?.telegram.username ?? null,
+      error: deps.manager?.telegram.error ?? null,
+    },
+    manager: { enabled: llm.enabled, model: llm.enabled ? llm.model : null },
+  });
+  const settingsBody = async () => {
+    const s = await getSettings(db);
+    const { lastDigestOn: _d, lastReviewOn: _r, telegramChatId, ...rest } = s;
+    return { settings: { ...rest, telegramLinked: telegramChatId != null }, ...managerState() };
+  };
+  r.get('/settings', async (c) => c.json(await settingsBody()));
+  r.patch('/settings', async (c) => {
+    const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+    const b = parseWith(z.object({
+      time_zone: z.string().max(64).optional(), digest_time: time.optional(), quiet_from: time.optional(), quiet_to: time.optional(),
+      notify_review: z.boolean().optional(), notify_blocked: z.boolean().optional(), manager_auto: z.boolean().optional(),
+    }), await c.req.json());
+    await updateSettings(db, {
+      timeZone: b.time_zone, digestTime: b.digest_time, quietFrom: b.quiet_from, quietTo: b.quiet_to,
+      notifyReview: b.notify_review, notifyBlocked: b.notify_blocked, managerAuto: b.manager_auto,
+    });
+    return c.json(await settingsBody());
+  });
+  r.post('/telegram/link', async (c) => {
+    const username = deps.manager?.telegram.username;
+    if (!deps.manager?.api || !username) {
+      throw new DomainError('unavailable', 'The Telegram bot is not running: set CONUS_TELEGRAM_BOT_TOKEN on the server.', { reason: 'telegram_off' });
+    }
+    const { code, expiresAt } = await createTelegramLinkCode(db);
+    return c.json({ code, url: `https://t.me/${username}?start=${code}`, expiresAt });
+  });
+  r.post('/telegram/unlink', async (c) => {
+    await unlinkTelegram(db);
+    return c.json(await settingsBody());
+  });
+  r.post('/telegram/test', async (c) => {
+    const chat = (await getSettings(db)).telegramChatId;
+    if (!deps.manager?.api || chat == null) throw new DomainError('unavailable', 'Telegram is not linked.', { reason: 'telegram_off' });
+    await deps.manager.api.sendMessage(chat, tr('👋 Conus is here. Notices and digests will come to this chat.', '👋 Conus на связи. Уведомления и сводки будут приходить сюда.'));
+    return c.json({ ok: true });
+  });
+  r.post('/intake', async (c) => {
+    const limited = spendOk(c);
+    if (limited) return limited;
+    const { text } = parseWith(z.object({ text: z.string().max(INTAKE_MAX_CHARS + 1000) }), await c.req.json());
+    return c.json({ batch: await runIntake({ db, llm }, { source: 'web', text }) });
+  });
+  r.get('/manager/review', async (c) => c.json({ review: await latestReview(db), ...managerState() }));
+  r.post('/manager/review', async (c) => {
+    const limited = spendOk(c);
+    if (limited) return limited;
+    return c.json({ review: await runReview({ db, llm }, 'owner'), ...managerState() });
+  });
   return r;
 }

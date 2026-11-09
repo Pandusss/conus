@@ -24,6 +24,9 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       CONUS_JUDGE_ENABLED: ${CONUS_JUDGE_ENABLED:-true}
       CONUS_JUDGE_MODEL: ${CONUS_JUDGE_MODEL:-claude-haiku-5-5}
+      CONUS_MANAGER_ENABLED: ${CONUS_MANAGER_ENABLED:-true}
+      CONUS_MANAGER_MODEL: ${CONUS_MANAGER_MODEL:-claude-opus-5-5}
+      CONUS_TELEGRAM_BOT_TOKEN: ${CONUS_TELEGRAM_BOT_TOKEN:-}
     ports: ["${CONUS_BIND:-127.0.0.1}:${CONUS_PORT:-8080}:8080"]
     depends_on: { db: { condition: service_healthy } }
     restart: unless-stopped

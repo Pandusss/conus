@@ -6,6 +6,7 @@ import { api, type OpenStatus, type OverviewDto, type OverviewTaskDto, type Proj
 import { Avatar } from '../components/Avatar';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorLine } from '../components/ErrorLine';
+import { ManagerPanel } from '../components/ManagerPanel';
 import { DueChip, PriorityBadge, PriorityIcon } from '../components/Planning';
 import { StatusDot } from '../components/StatusPill';
 import { useT } from '../i18n';
@@ -42,6 +43,8 @@ export function Overview() {
             <Tile label={t.overview.tiles.overdue} value={overdue} danger={overdue > 0} />
             <Tile label={t.overview.tiles.doneWeek} value={sum((p) => p.doneThisWeek)} />
           </div>
+
+          <ManagerPanel />
 
           <section className="section">
             <h2>{t.overview.needsYou}{waiting > 0 && <span className="count">{waiting}</span>}</h2>

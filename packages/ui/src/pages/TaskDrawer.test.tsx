@@ -111,6 +111,24 @@ describe('TaskDrawer', () => {
     await waitFor(() => expect(mutations(f)).toEqual([{ call: `PATCH /api/ui/tasks/${ID}/planning`, body: '{"due_on":"2030-11-12"}' }]));
   });
 
+  it('moves the task to another project', async () => {
+    const f = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+      const u = String(url);
+      if (((init as RequestInit | undefined)?.method ?? 'GET') !== 'GET') return json({ task: { ...task, ref: 'API-4' } });
+      if (u === '/api/ui/projects') return json({ projects: [{ id: 'p1', key: 'WB', name: 'Web', openCount: 1 }, { id: '22222222-2222-4222-8222-222222222222', key: 'API', name: 'Сервер', openCount: 0 }] });
+      return json(detail);
+    });
+    mount();
+    await screen.findByText('Починить логин');
+    await userEvent.click(screen.getByRole('button', { name: 'Действия с задачей' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Перенести в проект…' }));
+    const dlg = screen.getByRole('dialog', { name: 'Перенести WB-3' });
+    await waitFor(() => expect(within(dlg).getAllByRole('option')).toHaveLength(2)); // the current project is not offered
+    await userEvent.selectOptions(within(dlg).getByLabelText('Проект'), '22222222-2222-4222-8222-222222222222');
+    await userEvent.click(within(dlg).getByRole('button', { name: 'Перенести' }));
+    await waitFor(() => expect(mutations(f)).toEqual([{ call: `POST /api/ui/tasks/${ID}/move`, body: '{"project_id":"22222222-2222-4222-8222-222222222222"}' }]));
+  });
+
   it('saves with the version captured when editing started, even if the task was refreshed meanwhile', async () => {
     const f = mockServer();
     const { client } = mount();

@@ -3,6 +3,8 @@ import { DomainError } from '../errors';
 import { appendEvent } from '../events';
 import { chatNote } from '../chat-note';
 import { PRIORITIES, type Ctx, type MutationResult, type Priority, type Status, type Task } from '../types';
+import { allocateTaskNumber } from '../projects';
+import { formatRef } from '../refs';
 import { TASK_SELECT, getTaskById, mapTask } from './queries';
 import { optionalText, requireText } from './validate';
 import { t as tr } from '../lang';
@@ -103,6 +105,61 @@ export async function ownerSetPlanning(
     );
     // Re-choosing the current priority only pins it: no history event for a value that did not change.
     if (Object.keys(changes).length) await appendEvent(tx, { taskId: task.id, type: 'updated', actor: ctx.actor, changes });
+    const t = (await getTaskById(tx, task.id))!;
+    return { task: t, chatNote: chatNote('updated', t) };
+  });
+}
+
+/**
+ * The manager sets a priority (and optionally a due date) with its reason. A priority the owner set is never changed:
+ * then nothing happens and `pinned` is true. The change goes to the history as an `updated` event by the manager.
+ */
+export async function managerSetPriority(
+  ctx: Ctx, input: { taskId: string; priority: Priority; dueOn?: string | null; reason: string },
+): Promise<{ task: Task; changed: boolean; pinned: boolean }> {
+  if (ctx.actor.kind !== 'manager') throw new DomainError('forbidden', 'Only the manager can do this.');
+  if (!(PRIORITIES as readonly string[]).includes(input.priority)) throw new DomainError('validation', 'Bad priority.', { field: 'priority' });
+  const reason = optionalText(input.reason, 'reason', 1000);
+  const dueOn = input.dueOn === undefined || input.dueOn === null ? input.dueOn : parseDueDate(input.dueOn);
+  return withTx(ctx.db, async (tx) => {
+    const task = assertLive(await getTaskById(tx, input.taskId, { forUpdate: true }));
+    if (task.status === 'done' || task.status === 'dropped') return { task, changed: false, pinned: false };
+    const pinned = task.prioritySource === 'owner';
+    const changes: Record<string, { from: unknown; to: unknown }> = {};
+    if (!pinned && input.priority !== task.priority) changes.priority = { from: task.priority, to: input.priority };
+    // the manager fills a missing date but never moves one somebody set
+    if (dueOn && !task.dueOn) changes.due = { from: null, to: dueOn };
+    if (!Object.keys(changes).length) return { task, changed: false, pinned };
+    await tx.query(
+      `UPDATE tasks SET priority = CASE WHEN $2::text IS NULL THEN priority ELSE $2::text END,
+         priority_source = CASE WHEN $2::text IS NULL THEN priority_source ELSE 'manager' END,
+         due_on = COALESCE(due_on, $3::date), version = version + 1, updated_at = now() WHERE id = $1`,
+      [task.id, changes.priority ? input.priority : null, changes.due ? dueOn : null],
+    );
+    await appendEvent(tx, { taskId: task.id, type: 'updated', actor: ctx.actor, changes, reason });
+    return { task: (await getTaskById(tx, task.id))!, changed: true, pinned };
+  });
+}
+
+/**
+ * The owner moves a task to another project (e.g. a proposal the manager filed in the wrong place). It gets the next
+ * number there; the history keeps the old ref. A subtask, a parent or a task an agent is working on stays put.
+ */
+export async function ownerMoveTask(ctx: Ctx, input: { taskId: string; projectId: string }): Promise<MutationResult> {
+  assertOwner(ctx);
+  return withTx(ctx.db, async (tx) => {
+    // same lock order as mergeProjects: the project rows first, then the task
+    const { rows: ps } = await tx.query('SELECT id, key FROM projects WHERE id = $1 FOR UPDATE', [input.projectId]);
+    if (!ps[0]) throw new DomainError('not_found', 'Project not found.');
+    const task = assertLive(await getTaskById(tx, input.taskId, { forUpdate: true }));
+    if (task.projectId === input.projectId) return { task, chatNote: chatNote('updated', task) };
+    const { rows: kids } = await tx.query('SELECT 1 FROM tasks WHERE parent_id = $1 AND deleted_at IS NULL LIMIT 1', [task.id]);
+    if (task.parentId || kids.length) throw new DomainError('validation', 'A task with a parent or subtasks cannot be moved alone.');
+    if (task.claimedBySessionId) throw new DomainError('validation', `${task.ref} is being worked on; move it once the agent lets it go.`);
+    const n = await allocateTaskNumber(tx, input.projectId);
+    await tx.query('UPDATE tasks SET project_id = $2, number = $3, version = version + 1, updated_at = now() WHERE id = $1', [task.id, input.projectId, n]);
+    const to = formatRef(ps[0].key, n);
+    await appendEvent(tx, { taskId: task.id, type: 'moved', actor: ctx.actor, changes: { ref: { from: task.ref, to } } });
     const t = (await getTaskById(tx, task.id))!;
     return { task: t, chatNote: chatNote('updated', t) };
   });

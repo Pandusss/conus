@@ -15,7 +15,9 @@ export type SessionSource = 'startup' | 'resume' | 'clear' | 'compact';
 export type Actor =
   | { kind: 'agent'; agentId: string; sessionId: string | null; model: string | null }
   | { kind: 'user' }
-  | { kind: 'system' };
+  | { kind: 'system' }
+  /** The manager: Conus's own model acting for the owner (proposals from correspondence, priorities). */
+  | { kind: 'manager' };
 export interface Ctx { db: Db; actor: Actor; idempotencyKey?: string | null; now?: Date }
 export interface Project { id: string; key: string; name: string; repoFingerprints: string[]; createdAt: Date }
 export interface Agent { id: string; name: string; kind: AgentKind; tokenPrefix: string; createdAt: Date; revokedAt: Date | null; lastSeenAt: Date | null; lastUnboundMcpAt: Date | null }

@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Ban, ChevronDown, CircleCheck, Ellipsis, GitCommitHorizontal, GitMerge, Pencil, Quote, Trash2, X } from 'lucide-react';
+import { Ban, ChevronDown, CircleCheck, Ellipsis, FolderInput, GitCommitHorizontal, GitMerge, Pencil, Quote, Trash2, X } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { api, HttpError, type Status, type TaskDto } from '../api';
+import { api, HttpError, type ProjectDto, type Status, type TaskDto } from '../api';
 import { Avatar } from '../components/Avatar';
 import { ConfirmDialog, Dialog } from '../components/Dialog';
 import { ErrorLine, useActionError } from '../components/ErrorLine';
@@ -54,7 +54,7 @@ export function TaskDetail({ id, onClose }: { id: string; onClose: () => void })
   const taskPath = useTaskPath();
   const q = useQuery({ queryKey: ['task', id], queryFn: () => api<TaskDetailDto>(`/tasks/${id}`) });
   const [edit, setEdit] = useState<Draft | null>(null);
-  const [dialog, setDialog] = useState<null | 'merge' | 'delete'>(null);
+  const [dialog, setDialog] = useState<null | 'merge' | 'delete' | 'move'>(null);
   const [moving, setMoving] = useState<{ task: TaskDto; status: Status } | null>(null);
   const { error, track } = useActionError();
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['task', id] }); void qc.invalidateQueries({ queryKey: ['tasks'] }); };
@@ -74,6 +74,11 @@ export function TaskDetail({ id, onClose }: { id: string; onClose: () => void })
     onSuccess: (_r, into) => { setDialog(null); refresh(); toast(t.task.mergedInto(into.ref)); nav(taskPath(into.id)); },
     onMutate: track.onMutate, onError,
   });
+  const move = useMutation({
+    mutationFn: (projectId: string) => api<{ task: TaskDto }>(`/tasks/${id}/move`, { method: 'POST', json: { project_id: projectId } }),
+    onSuccess: (r) => { setDialog(null); refresh(); void qc.invalidateQueries({ queryKey: ['overview'] }); toast(t.task.moved(r.task.ref)); },
+    onMutate: track.onMutate, onError,
+  });
   const del = useMutation({
     mutationFn: () => api(`/tasks/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
@@ -84,7 +89,7 @@ export function TaskDetail({ id, onClose }: { id: string; onClose: () => void })
     },
     onMutate: track.onMutate, onError,
   });
-  const busy = setStatus.isPending || plan.isPending || save.isPending || merge.isPending || del.isPending;
+  const busy = setStatus.isPending || plan.isPending || save.isPending || merge.isPending || move.isPending || del.isPending;
 
   const closeButton = (
     <button type="button" className="icon-btn" aria-label={t.common.close} onClick={onClose}><X size={18} aria-hidden /></button>
@@ -125,6 +130,7 @@ export function TaskDetail({ id, onClose }: { id: string; onClose: () => void })
           groups={[{
             items: [
               { label: t.task.duplicateOf, icon: <GitMerge size={16} aria-hidden />, onSelect: () => setDialog('merge') },
+              { label: t.task.move, icon: <FolderInput size={16} aria-hidden />, onSelect: () => setDialog('move') },
               { label: t.task.delete, icon: <Trash2 size={16} aria-hidden />, danger: true, onSelect: () => setDialog('delete') },
             ],
           }]}
@@ -261,6 +267,9 @@ export function TaskDetail({ id, onClose }: { id: string; onClose: () => void })
         message={<p><span className="mono">{task.ref}</span> {t.task.deleteText(task.title)}</p>}
         onConfirm={() => del.mutate()} onCancel={() => setDialog(null)}
       />
+      {dialog === 'move' && (
+        <MoveDialog task={task} busy={move.isPending} onConfirm={(projectId) => move.mutate(projectId)} onCancel={() => setDialog(null)} />
+      )}
       {dialog === 'merge' && (
         <MergeDialog task={task} busy={merge.isPending} onConfirm={(into) => merge.mutate(into)} onCancel={() => setDialog(null)} />
       )}
@@ -322,6 +331,36 @@ function MergeDialog({ task, busy, onConfirm, onCancel }: { task: TaskDto; busy:
       </div>
       <ErrorLine error={siblings.error} />
       <p className="dialog-note">{t.task.mergeNote}</p>
+    </Dialog>
+  );
+}
+
+/** «Move to project…»: e.g. a proposal the manager filed in the wrong project, or in Inbox. */
+function MoveDialog({ task, busy, onConfirm, onCancel }: { task: TaskDto; busy: boolean; onConfirm: (projectId: string) => void; onCancel: () => void }) {
+  const { t } = useT();
+  const [to, setTo] = useState('');
+  const fieldId = useId();
+  const projects = useQuery({ queryKey: ['projects'], queryFn: () => api<{ projects: ProjectDto[] }>('/projects') });
+  const options = (projects.data?.projects ?? []).filter((p) => p.key !== task.projectKey);
+  return (
+    <Dialog
+      open title={t.task.moveTitle(task.ref)} onClose={onCancel} onSubmit={() => { if (to && !busy) onConfirm(to); }}
+      footer={(
+        <>
+          <button type="button" className="btn btn-ghost" onClick={onCancel}>{t.common.cancel}</button>
+          <button type="submit" className="btn btn-primary" disabled={!to || busy}>{t.task.moveConfirm}</button>
+        </>
+      )}
+    >
+      <div className="field">
+        <label htmlFor={fieldId}>{t.task.moveTo}</label>
+        <select id={fieldId} className="select" value={to} data-autofocus onChange={(e) => setTo(e.target.value)}>
+          <option value="">{projects.isPending ? t.common.loading : t.projects.pickProject}</option>
+          {options.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.key})</option>)}
+        </select>
+      </div>
+      <ErrorLine error={projects.error} />
+      <p className="dialog-note">{t.task.moveNote}</p>
     </Dialog>
   );
 }

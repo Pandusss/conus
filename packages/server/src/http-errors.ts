@@ -1,11 +1,12 @@
 import { DomainError, type DomainErrorCode } from '@conus/core';
 
-export function statusFor(code: DomainErrorCode): 400 | 401 | 403 | 404 | 409 {
+export function statusFor(code: DomainErrorCode): 400 | 401 | 403 | 404 | 409 | 503 {
   switch (code) {
     case 'validation': return 400;
     case 'unauthorized': return 401;
     case 'forbidden': return 403;
     case 'not_found': return 404;
+    case 'unavailable': return 503;
     default: return 409; // invalid_transition, conflict_claimed, conflict_version
   }
 }
