@@ -15,6 +15,9 @@ LEFT JOIN projects pp ON pp.id = pt.project_id
 LEFT JOIN tasks bt ON bt.id = t.blocked_by_task_id
 LEFT JOIN projects bp ON bp.id = bt.project_id`;
 
+/** Orders tasks (alias t) most urgent first, then by the nearest due date. */
+export const PRIORITY_ORDER = `CASE t.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END, t.due_on NULLS LAST`;
+
 export function mapTask(r: any): Task {
   return {
     id: r.id, projectId: r.project_id, projectKey: r.project_key, number: r.number,
@@ -25,7 +28,7 @@ export function mapTask(r: any): Task {
     result: r.result, blockReason: r.block_reason,
     blockedByRef: r.blocked_by_number != null ? formatRef(r.blocked_by_key, r.blocked_by_number) : null,
     sourceQuote: r.source_quote, claimedBySessionId: r.claimed_by_session_id, claimExpiresAt: r.claim_expires_at,
-    mergedIntoId: r.merged_into_task_id, version: r.version,
+    mergedIntoId: r.merged_into_task_id, priority: r.priority, prioritySource: r.priority_source, dueOn: r.due_on, version: r.version,
     createdAt: r.created_at, updatedAt: r.updated_at, closedAt: r.closed_at, deletedAt: r.deleted_at,
   };
 }

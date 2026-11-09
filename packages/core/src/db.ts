@@ -7,6 +7,8 @@ export type Queryable = pg.Pool | pg.PoolClient;
 
 // bigint (int8) → number: ids from bigserial and count(*) stay well below 2^53.
 pg.types.setTypeParser(20, (v) => Number(v));
+// date → the 'YYYY-MM-DD' string as stored: a JS Date would shift the day by the server's time zone.
+pg.types.setTypeParser(1082, (v) => v);
 
 export function createDb(url: string, max = 10): Db {
   const pool = new pg.Pool({ connectionString: url, max });

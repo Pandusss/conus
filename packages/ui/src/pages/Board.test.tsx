@@ -194,3 +194,38 @@ describe('Board status changes', () => {
     expect(screen.queryByRole('menu')).toBeNull();
   });
 });
+
+describe('Board planning', () => {
+  it('puts the most urgent open work on top of each column, then the nearest due date', async () => {
+    mockServer([
+      taskDto({ id: 'n1', ref: 'WB-1', title: 'Обычная' }),
+      taskDto({ id: 'l1', ref: 'WB-2', title: 'Низкая', priority: 'low' }),
+      taskDto({ id: 'd2', ref: 'WB-3', title: 'Срок позже', dueOn: '2030-05-02' }),
+      taskDto({ id: 'u1', ref: 'WB-4', title: 'Срочная', priority: 'urgent' }),
+      taskDto({ id: 'd1', ref: 'WB-5', title: 'Срок раньше', dueOn: '2030-05-01' }),
+      taskDto({ id: 'x1', ref: 'WB-6', title: 'Готовая срочная', status: 'done', priority: 'urgent' }),
+    ]);
+    renderPage(<Board />);
+    await screen.findByText('Обычная');
+    const titles = within(column('К выполнению')).getAllByRole('link').map((a) => a.textContent);
+    expect(titles).toEqual(['Срочная', 'Срок раньше', 'Срок позже', 'Обычная', 'Низкая']);
+    // closed work shows no priority badge
+    expect(within(card('Готовая срочная')).queryByText('Срочно')).toBeNull();
+    expect(within(card('Срочная')).getByText('Срочно')).toBeTruthy();
+  });
+
+  it('sets the priority from the card menu', async () => {
+    const f = mockServer();
+    renderPage(<Board />);
+    await screen.findByText('Починить логин');
+    await userEvent.click(screen.getByRole('button', { name: 'Действия с WB-1' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Высокий' }));
+    await waitFor(() => expect(mutations(f)).toEqual([{ call: 'PATCH /api/ui/tasks/t1/planning', body: '{"priority":"high"}' }]));
+  });
+
+  it('opens a task over the board', async () => {
+    mockServer();
+    renderPage(<Board />);
+    expect((await screen.findByRole('link', { name: 'Починить логин' })).getAttribute('href')).toBe('/board/tasks/t1');
+  });
+});

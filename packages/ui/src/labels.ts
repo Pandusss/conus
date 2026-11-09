@@ -1,4 +1,4 @@
-import type { Status } from './api';
+import type { Priority, Status } from './api';
 import type { Messages } from './i18n';
 
 export const STATUSES: readonly Status[] = ['proposed', 'todo', 'in_progress', 'blocked', 'review', 'done', 'dropped'];
@@ -8,6 +8,48 @@ export const MOVABLE_STATUSES: Status[] = ['todo', 'in_progress', 'blocked', 're
 
 /** Moving a task to these asks for a reason first. */
 export const needsReason = (s: Status): boolean => s === 'blocked' || s === 'dropped';
+
+/** Most urgent first. */
+export const PRIORITIES: readonly Priority[] = ['urgent', 'high', 'normal', 'low'];
+export const priorityRank = (p: Priority | undefined): number => { const i = PRIORITIES.indexOf(p ?? 'normal'); return i < 0 ? 2 : i; };
+export const isPriority = (p: unknown): p is Priority => typeof p === 'string' && (PRIORITIES as readonly string[]).includes(p);
+
+/** Today in the browser's time zone, as 'YYYY-MM-DD'. */
+export function localToday(now: Date = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
+}
+
+/** Whole days from today to a 'YYYY-MM-DD' date: negative is overdue, 0 is today. */
+export function daysUntil(dueOn: string, now: Date = new Date()): number {
+  const day = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return Date.UTC(y!, m! - 1, d!); };
+  return Math.round((day(dueOn) - day(localToday(now))) / 86_400_000);
+}
+
+export type DueState = 'overdue' | 'today' | 'soon' | 'later';
+/** A 'YYYY-MM-DD' day in full: «12 November 2026». */
+export function formatDay(dueOn: string, t: Messages): string {
+  const [y, m, d] = dueOn.split('-').map(Number);
+  return new Date(y!, m! - 1, d!).toLocaleDateString(t.locale, { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+/** How pressing a due date is: past, today, within 3 days, or later. */
+export function dueState(dueOn: string, now: Date = new Date()): DueState {
+  const d = daysUntil(dueOn, now);
+  return d < 0 ? 'overdue' : d === 0 ? 'today' : d <= 3 ? 'soon' : 'later';
+}
+
+/** «Overdue 2 d», «Today», «Tomorrow», «In 3 d», or the date itself further out. */
+export function dueLabel(dueOn: string, t: Messages, now: Date = new Date()): string {
+  const d = daysUntil(dueOn, now);
+  if (d < 0) return t.due.overdue(-d);
+  if (d === 0) return t.due.today;
+  if (d === 1) return t.due.tomorrow;
+  if (d <= 6) return t.due.inDays(d);
+  const [y, m, day] = dueOn.split('-').map(Number);
+  const date = new Date(y!, m! - 1, day!);
+  return date.toLocaleDateString(t.locale, { day: 'numeric', month: 'short', ...(y !== now.getFullYear() ? { year: 'numeric' } : {}) });
+}
 
 export const isStatus = (s: unknown): s is Status => typeof s === 'string' && (STATUSES as readonly string[]).includes(s);
 

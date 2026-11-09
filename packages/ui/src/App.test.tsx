@@ -56,7 +56,27 @@ describe('App', () => {
     expect(screen.queryByPlaceholderText('Пароль')).toBeNull();
   });
 
-  it('opens a direct task link as the drawer over the board', async () => {
+  it('opens a direct task link as the drawer over the overview, the home page', async () => {
+    const ID = '11111111-1111-4111-8111-111111111111';
+    const task = taskDto({ id: ID, ref: 'WB-3', title: 'Починить логин' });
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u === '/api/ui/me') return json({ authenticated: true });
+      if (u === '/api/ui/health') return json({ warnings: [] });
+      if (u === '/api/ui/projects') return json({ projects: [{ id: 'p1', key: 'WB', name: 'Web', openCount: 1 }] });
+      if (u === '/api/ui/sessions') return json({ sessions: [] });
+      if (u === `/api/ui/tasks/${ID}`) return json({ task, events: [], links: [], subtasks: [] });
+      if (u === '/api/ui/overview') return json({ projects: [], attention: { review: [], blocked: [], dated: [], proposals: 0 } });
+      return json({ tasks: [task] });
+    });
+    renderPage(<App />, { path: `/tasks/${ID}` });
+    const drawer = await screen.findByRole('dialog', { name: 'Задача' });
+    expect(await within(drawer).findByRole('heading', { name: 'Починить логин' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Обзор', level: 1 })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Обзор' }).className).toContain('is-active');
+  });
+
+  it('opens a board task link as the drawer over the board', async () => {
     const ID = '11111111-1111-4111-8111-111111111111';
     const task = taskDto({ id: ID, ref: 'WB-3', title: 'Починить логин' });
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
@@ -68,7 +88,7 @@ describe('App', () => {
       if (u === `/api/ui/tasks/${ID}`) return json({ task, events: [], links: [], subtasks: [] });
       return json({ tasks: [task] });
     });
-    renderPage(<App />, { path: `/tasks/${ID}` });
+    renderPage(<App />, { path: `/board/tasks/${ID}` });
     const drawer = await screen.findByRole('dialog', { name: 'Задача' });
     expect(await within(drawer).findByRole('heading', { name: 'Починить логин' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Доска', level: 1 })).toBeTruthy();
@@ -82,6 +102,7 @@ describe('App', () => {
       if (u === '/api/ui/me') return meFails ? new Response('<html>502</html>', { status: 502, statusText: 'Bad Gateway' }) : json({ authenticated: true });
       if (u === '/api/ui/health') return json({ warnings: [] });
       if (u === '/api/ui/projects') return json({ projects: [] });
+      if (u === '/api/ui/overview') return json({ projects: [], attention: { review: [], blocked: [], dated: [], proposals: 0 } });
       return json({ tasks: [] });
     });
     const { client } = renderPage(<App />);

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Activity, Bot, FolderKanban, Inbox, LayoutGrid, LogOut, Menu as MenuIcon, Moon, Sun, X } from 'lucide-react';
+import { Activity, Bot, FolderKanban, Inbox, LayoutDashboard, LayoutGrid, LogOut, Menu as MenuIcon, Moon, Sun, X } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { api, type ProjectDto, type SessionDto, type TaskDto } from '../api';
 import { BRAND_CELLS } from '../brand-cells';
@@ -58,8 +58,9 @@ function Sidebar({ open, onClose, onLogout, loggingOut }: { open: boolean; onClo
   const projects = useQuery({ queryKey: ['projects'], queryFn: () => api<{ projects: ProjectDto[] }>('/projects') });
   const proposalCount = proposals.data?.tasks?.length ?? 0;
   const anyActive = (sessions.data?.sessions ?? []).some((s) => s.state === 'active');
-  const onBoard = pathname === '/' || pathname.startsWith('/tasks/');
-  const pick = (key: string) => { setProject(key); nav('/'); };
+  const onOverview = pathname === '/' || pathname.startsWith('/tasks/');
+  const onBoard = pathname === '/board' || pathname.startsWith('/board/');
+  const pick = (key: string) => { setProject(key); nav('/board'); };
   const item = ({ isActive }: { isActive: boolean }) => `nav-item${isActive ? ' is-active' : ''}`;
   return (
     <aside id="sidebar" className={`sidebar${open ? ' is-open' : ''}`}>
@@ -68,7 +69,8 @@ function Sidebar({ open, onClose, onLogout, loggingOut }: { open: boolean; onClo
         <button type="button" className="icon-btn sidebar-close" aria-label={t.shell.closeMenu} onClick={onClose}><X size={18} aria-hidden /></button>
       </div>
       <nav className="nav" aria-label={t.shell.sections}>
-        <NavLink to="/" className={() => item({ isActive: onBoard })} end><LayoutGrid size={16} aria-hidden />{t.shell.board}</NavLink>
+        <NavLink to="/" className={() => item({ isActive: onOverview })} end><LayoutDashboard size={16} aria-hidden />{t.shell.overview}</NavLink>
+        <NavLink to="/board" className={() => item({ isActive: onBoard })}><LayoutGrid size={16} aria-hidden />{t.shell.board}</NavLink>
         <NavLink to="/proposals" className={item}>
           <Inbox size={16} aria-hidden />{t.shell.proposals}
           {proposalCount > 0 && <span className="nav-badge" aria-label={t.shell.newCount(proposalCount)}>{proposalCount}</span>}

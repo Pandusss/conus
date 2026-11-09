@@ -9,12 +9,14 @@ import { ConfirmDialog, Dialog } from '../components/Dialog';
 import { ErrorLine, useActionError } from '../components/ErrorLine';
 import { trapTab, useEscapeLayer, useFocusInside } from '../components/layers';
 import { Menu } from '../components/Menu';
+import { DueChip, PriorityIcon, priorityGroup, useSetPlanning } from '../components/Planning';
 import { StatusDot, StatusPill } from '../components/StatusPill';
 import { Timeline } from '../components/Timeline';
 import { useToast } from '../components/Toast';
 import { useT } from '../i18n';
 import { MOVABLE_STATUSES, formatTime, needsReason, relativeTime } from '../labels';
 import { MoveReasonDialog, useSetStatus, type TaskDetailDto } from '../task-actions';
+import { useTaskBase, useTaskPath } from '../task-paths';
 
 /** The edit form; `version` is the task version the user started editing from (optimistic-lock token). */
 type Draft = { title: string; description: string; version: number };
@@ -27,7 +29,8 @@ export function TaskDrawer() {
   const { t } = useT();
   const { id } = useParams();
   const nav = useNavigate();
-  const close = useCallback(() => nav('/'), [nav]);
+  const base = useTaskBase();
+  const close = useCallback(() => nav(base || '/'), [nav, base]);
   const panel = useRef<HTMLDivElement>(null);
   useEscapeLayer(close);
   useFocusInside(panel, { self: true });
@@ -47,6 +50,8 @@ export function TaskDetail({ id, onClose }: { id: string; onClose: () => void })
   const qc = useQueryClient();
   const nav = useNavigate();
   const toast = useToast();
+  const base = useTaskBase();
+  const taskPath = useTaskPath();
   const q = useQuery({ queryKey: ['task', id], queryFn: () => api<TaskDetailDto>(`/tasks/${id}`) });
   const [edit, setEdit] = useState<Draft | null>(null);
   const [dialog, setDialog] = useState<null | 'merge' | 'delete'>(null);
@@ -59,13 +64,14 @@ export function TaskDetail({ id, onClose }: { id: string; onClose: () => void })
     if (e instanceof HttpError && e.code === 'conflict_version') void qc.invalidateQueries({ queryKey: ['task', id] });
   };
   const setStatus = useSetStatus({ onMutate: track.onMutate, onError });
+  const plan = useSetPlanning({ onMutate: track.onMutate, onError });
   const save = useMutation({
     mutationFn: (d: Draft) => api(`/tasks/${id}`, { method: 'PATCH', json: { title: d.title, description: d.description, expected_version: d.version } }),
     onSuccess: () => { setEdit(null); refresh(); toast(t.task.saved); }, onMutate: track.onMutate, onError,
   });
   const merge = useMutation({
     mutationFn: (into: TaskDto) => api(`/tasks/${id}/merge`, { method: 'POST', json: { into_id: into.id } }),
-    onSuccess: (_r, into) => { setDialog(null); refresh(); toast(t.task.mergedInto(into.ref)); nav(`/tasks/${into.id}`); },
+    onSuccess: (_r, into) => { setDialog(null); refresh(); toast(t.task.mergedInto(into.ref)); nav(taskPath(into.id)); },
     onMutate: track.onMutate, onError,
   });
   const del = useMutation({
@@ -74,11 +80,11 @@ export function TaskDetail({ id, onClose }: { id: string; onClose: () => void })
       setDialog(null);
       void qc.invalidateQueries({ queryKey: ['tasks'] }); // the board must not keep showing the deleted task
       toast(t.task.deleted(q.data?.task.ref));
-      nav('/');
+      nav(base || '/');
     },
     onMutate: track.onMutate, onError,
   });
-  const busy = setStatus.isPending || save.isPending || merge.isPending || del.isPending;
+  const busy = setStatus.isPending || plan.isPending || save.isPending || merge.isPending || del.isPending;
 
   const closeButton = (
     <button type="button" className="icon-btn" aria-label={t.common.close} onClick={onClose}><X size={18} aria-hidden /></button>
@@ -160,7 +166,36 @@ export function TaskDetail({ id, onClose }: { id: string; onClose: () => void })
           </div>
           <div>
             <dt>{t.task.parent}</dt>
-            <dd>{task.parentRef ? (task.parentId ? <Link to={`/tasks/${task.parentId}`} className="mono">{task.parentRef}</Link> : task.parentRef) : <span className="muted">—</span>}</dd>
+            <dd>{task.parentRef ? (task.parentId ? <Link to={taskPath(task.parentId)} className="mono">{task.parentRef}</Link> : task.parentRef) : <span className="muted">—</span>}</dd>
+          </div>
+          <div>
+            <dt>{t.task.priority}</dt>
+            <dd>
+              <Menu
+                label={t.priority.title(t.priority[task.priority])} className={`prio-button prio-${task.priority}`} disabled={busy} align="start"
+                groups={[priorityGroup(task, t, (priority) => plan.mutate({ task, priority }))]}
+              >
+                <PriorityIcon priority={task.priority} />{t.priority[task.priority]}<ChevronDown size={14} aria-hidden />
+              </Menu>
+              {task.prioritySource === 'owner' && <span className="muted prio-pinned">{t.priority.pinned}</span>}
+            </dd>
+          </div>
+          <div>
+            <dt>{t.task.due}</dt>
+            <dd className="due-field">
+              <input
+                type="date" className="date-input" aria-label={t.task.due} value={task.dueOn ?? ''}
+                // browsers report half-typed years (0002-…) while the user types: send only a plausible date
+                onChange={(e) => { const v = e.target.value; if (!v || /^(20\d\d|2100)-/.test(v)) plan.mutate({ task, dueOn: v || null }); }}
+              />
+              {task.dueOn && task.status !== 'done' && task.status !== 'dropped' && <DueChip dueOn={task.dueOn} />}
+              {task.dueOn && (
+                <button type="button" className="icon-btn icon-btn-sm" aria-label={t.due.clear} title={t.due.clear} disabled={busy}
+                  onClick={() => plan.mutate({ task, dueOn: null })}>
+                  <X size={14} aria-hidden />
+                </button>
+              )}
+            </dd>
           </div>
           <div><dt>{t.task.created}</dt><dd title={formatTime(task.createdAt, t)}>{formatTime(task.createdAt, t)} <span className="muted">· {relativeTime(task.createdAt, t)}</span></dd></div>
           <div><dt>{t.task.updated}</dt><dd title={formatTime(task.updatedAt, t)}>{formatTime(task.updatedAt, t)} <span className="muted">· {relativeTime(task.updatedAt, t)}</span></dd></div>
@@ -190,7 +225,7 @@ export function TaskDetail({ id, onClose }: { id: string; onClose: () => void })
             <ul className="link-list">
               {subtasks.map((s) => (
                 <li key={s.id}>
-                  <Link to={`/tasks/${s.id}`}><span className="ref">{s.ref}</span><span className="link-list-title">{s.title}</span></Link>
+                  <Link to={taskPath(s.id)}><span className="ref">{s.ref}</span><span className="link-list-title">{s.title}</span></Link>
                   <StatusPill status={s.status} />
                 </li>
               ))}

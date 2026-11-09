@@ -14,7 +14,7 @@ const projects = [
 const mockServer = () => vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) =>
   (((init as RequestInit | undefined)?.method ?? 'GET') === 'GET' ? json({ projects }) : json({ ok: true })));
 const mount = () => renderPage(
-  <Routes><Route path="/projects" element={<Projects />} /><Route path="/" element={<p>доска</p>} /></Routes>,
+  <Routes><Route path="/projects" element={<Projects />} /><Route path="/board" element={<p>доска</p>} /></Routes>,
   { path: '/projects' },
 );
 const card = (name: string) => screen.getByRole('article', { name });

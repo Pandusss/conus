@@ -27,7 +27,7 @@ function Filter() {
 }
 const mount = (path = '/agents') => renderPage(
   <Shell onLogout={() => {}} loggingOut={false}>
-    <Routes><Route path="/" element={<Filter />} /><Route path="*" element={<p>другая страница</p>} /></Routes>
+    <Routes><Route path="/board" element={<Filter />} /><Route path="*" element={<p>другая страница</p>} /></Routes>
   </Shell>,
   { path },
 );

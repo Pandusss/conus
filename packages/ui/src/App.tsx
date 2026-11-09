@@ -8,6 +8,7 @@ import { useT } from './i18n';
 import { Agents } from './pages/Agents';
 import { Board } from './pages/Board';
 import { Login } from './pages/Login';
+import { Overview } from './pages/Overview';
 import { Projects } from './pages/Projects';
 import { Proposals } from './pages/Proposals';
 import { SessionPage } from './pages/SessionPage';
@@ -41,8 +42,11 @@ export function App() {
         <Shell onLogout={() => logout.mutate()} loggingOut={logout.isPending}>
           <ErrorLine error={logout.error} />
           <Routes>
-            {/* the task drawer opens over the board, so a direct /tasks/:id link shows both */}
-            <Route path="/" element={<Board />}>
+            {/* the task drawer opens over the page it came from: a direct /tasks/:id link shows it over the overview */}
+            <Route path="/" element={<Overview />}>
+              <Route path="tasks/:id" element={<TaskDrawer />} />
+            </Route>
+            <Route path="/board" element={<Board />}>
               <Route path="tasks/:id" element={<TaskDrawer />} />
             </Route>
             <Route path="/proposals" element={<Proposals />} />

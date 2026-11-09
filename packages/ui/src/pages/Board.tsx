@@ -2,17 +2,22 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { Bug, Ellipsis, GitCommitHorizontal, ListTree, Search } from 'lucide-react';
 import { Link, Outlet } from 'react-router-dom';
-import { api, type ProjectDto, type Status, type TaskDto } from '../api';
+import { api, type Priority, type ProjectDto, type Status, type TaskDto } from '../api';
 import { Avatar } from '../components/Avatar';
 import { ErrorLine, useActionError } from '../components/ErrorLine';
 import { Menu } from '../components/Menu';
+import { DueChip, PriorityBadge, priorityGroup, useSetPlanning } from '../components/Planning';
 import { StatusDot } from '../components/StatusPill';
 import { useT } from '../i18n';
-import { MOVABLE_STATUSES, formatTime, needsReason, relativeTime } from '../labels';
+import { MOVABLE_STATUSES, formatTime, needsReason, priorityRank, relativeTime } from '../labels';
 import { useProjectFilter } from '../project-filter';
 import { MoveReasonDialog, useSetStatus } from '../task-actions';
 
 const COLUMNS: Status[] = ['todo', 'in_progress', 'blocked', 'review', 'done'];
+/** Open columns put the most urgent work on top (then the nearest due date); closed ones stay most recent first. */
+const SORTED: Status[] = ['todo', 'in_progress', 'blocked', 'review'];
+const byPlan = (a: TaskDto, b: TaskDto) =>
+  priorityRank(a.priority) - priorityRank(b.priority) || (a.dueOn ?? '9999').localeCompare(b.dueOn ?? '9999');
 /** Closed columns show only the most recent tasks until «Show all». */
 const CLOSED_LIMIT = 20;
 
@@ -35,6 +40,7 @@ export function Board() {
   const searchRef = useRef<HTMLInputElement>(null);
   const { error, track } = useActionError();
   const move = useSetStatus(track);
+  const plan = useSetPlanning(track);
 
   const projects = useQuery({ queryKey: ['projects'], queryFn: () => api<{ projects: ProjectDto[] }>('/projects') });
   // A remembered project may have been merged away or renamed; once the list is known, forget a key that is not in it.
@@ -69,7 +75,11 @@ export function Board() {
   const needle = search.trim().toLowerCase();
   const visible = all.filter((x) =>
     (!onlyBugs || x.type === 'bug') && (!needle || x.ref.toLowerCase().includes(needle) || x.title.toLowerCase().includes(needle)));
-  const inColumn = (s: Status) => visible.filter((x) => x.status === s);
+  // Array.prototype.sort is stable: equal priority and date keep the server's most-recent-first order.
+  const inColumn = (s: Status) => {
+    const list = visible.filter((x) => x.status === s);
+    return SORTED.includes(s) ? list.sort(byPlan) : list;
+  };
 
   const requestMove = (task: TaskDto, status: Status) => {
     if (task.status === status) return;
@@ -145,6 +155,7 @@ export function Board() {
                 {shown.map((x) => (
                   <TaskCard
                     key={x.id} task={x} showProject={!project} dragging={dragging === x.id} onMove={requestMove}
+                    onPlan={(priority) => plan.mutate({ task: x, priority })}
                     onDragStart={() => { dragged.current = x; setDragging(x.id); }}
                     onDragEnd={() => { dragged.current = null; setDragging(null); setOver(null); }}
                   />
@@ -170,11 +181,12 @@ export function Board() {
   );
 }
 
-function TaskCard({ task, showProject, dragging, onMove, onDragStart, onDragEnd }: {
+function TaskCard({ task, showProject, dragging, onMove, onPlan, onDragStart, onDragEnd }: {
   task: TaskDto; showProject: boolean; dragging: boolean;
-  onMove: (task: TaskDto, status: Status) => void; onDragStart: () => void; onDragEnd: () => void;
+  onMove: (task: TaskDto, status: Status) => void; onPlan: (priority: Priority) => void; onDragStart: () => void; onDragEnd: () => void;
 }) {
   const { t } = useT();
+  const open = task.status !== 'done' && task.status !== 'dropped';
   return (
     <article
       className={`task-card${dragging ? ' is-dragging' : ''}`} draggable data-task={task.ref}
@@ -187,22 +199,24 @@ function TaskCard({ task, showProject, dragging, onMove, onDragStart, onDragEnd 
       <div className="task-card-top">
         <span className="ref">{task.ref}</span>
         {task.type === 'bug' && <span className="tag tag-bug"><Bug size={12} aria-hidden />{t.board.bug}</span>}
+        {open && <PriorityBadge priority={task.priority} />}
         <Menu
           label={t.board.cardActions(task.ref)} className="icon-btn icon-btn-sm card-menu"
           groups={[{
             title: t.board.changeStatus,
             items: MOVABLE_STATUSES.filter((s) => s !== task.status)
               .map((s) => ({ label: t.status[s], icon: <StatusDot status={s} />, onSelect: () => onMove(task, s) })),
-          }]}
+          }, ...(open ? [priorityGroup(task, t, onPlan)] : [])]}
         >
           <Ellipsis size={16} aria-hidden />
         </Menu>
       </div>
-      <Link to={`/tasks/${task.id}`} className="task-card-title" draggable={false}>{task.title}</Link>
+      <Link to={`/board/tasks/${task.id}`} className="task-card-title" draggable={false}>{task.title}</Link>
       {task.status === 'blocked' && task.blockReason && <p className="card-note is-blocked" title={task.blockReason}>{task.blockReason}</p>}
       {task.status === 'review' && <p className="card-note is-review">{t.board.awaitingReview}</p>}
       {task.status === 'done' && task.result && <p className="card-note" title={task.result}>{task.result}</p>}
       <div className="task-card-meta">
+        {open && task.dueOn && <DueChip dueOn={task.dueOn} />}
         {showProject && <span className="chip" title={task.projectName}>{task.projectKey}</span>}
         {task.holder && (
           <span className="chip chip-holder" title={`${task.holder.agentName} · ${task.holder.sessionRef}`}>

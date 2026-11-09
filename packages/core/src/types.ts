@@ -3,6 +3,11 @@ import type { Db } from './db';
 export const STATUSES = ['proposed', 'todo', 'in_progress', 'blocked', 'review', 'done', 'dropped'] as const;
 export type Status = (typeof STATUSES)[number];
 export const OPEN_STATUSES: readonly Status[] = ['proposed', 'todo', 'in_progress', 'blocked', 'review'];
+/** Most urgent first; 'normal' is the default. */
+export const PRIORITIES = ['urgent', 'high', 'normal', 'low'] as const;
+export type Priority = (typeof PRIORITIES)[number];
+/** Who set a task's priority last; 'owner' pins it (the manager never changes it). */
+export type PrioritySource = 'default' | 'agent' | 'manager' | 'owner';
 export type TaskType = 'task' | 'bug';
 export type AgentKind = 'claude_code' | 'codex' | 'other';
 export type SessionState = 'active' | 'ended' | 'stale';
@@ -15,7 +20,7 @@ export interface Ctx { db: Db; actor: Actor; idempotencyKey?: string | null; now
 export interface Project { id: string; key: string; name: string; repoFingerprints: string[]; createdAt: Date }
 export interface Agent { id: string; name: string; kind: AgentKind; tokenPrefix: string; createdAt: Date; revokedAt: Date | null; lastSeenAt: Date | null; lastUnboundMcpAt: Date | null }
 export interface Session { id: string; ref: string; agentId: string; agentSessionId: string; projectId: string | null; cwd: string | null; branch: string | null; model: string | null; currentTurn: number; state: SessionState; startedAt: Date; lastSeenAt: Date; endedAt: Date | null; endReason: string | null }
-export interface Task { id: string; projectId: string; projectKey: string; number: number; ref: string; parentId: string | null; parentRef: string | null; type: TaskType; title: string; description: string; status: Status; result: string | null; blockReason: string | null; blockedByRef: string | null; sourceQuote: string | null; claimedBySessionId: string | null; claimExpiresAt: Date | null; mergedIntoId: string | null; version: number; createdAt: Date; updatedAt: Date; closedAt: Date | null; deletedAt: Date | null }
+export interface Task { id: string; projectId: string; projectKey: string; number: number; ref: string; parentId: string | null; parentRef: string | null; type: TaskType; title: string; description: string; status: Status; result: string | null; blockReason: string | null; blockedByRef: string | null; sourceQuote: string | null; claimedBySessionId: string | null; claimExpiresAt: Date | null; mergedIntoId: string | null; priority: Priority; prioritySource: PrioritySource; /** 'YYYY-MM-DD' */ dueOn: string | null; version: number; createdAt: Date; updatedAt: Date; closedAt: Date | null; deletedAt: Date | null }
 /** The session that holds a task's claim, as the owner's UI shows it. */
 export interface TaskHolder { agentName: string; sessionRef: string; sessionId: string }
 /** A task plus the read-model extras the owner's UI lists: project name, claim holder, subtask and commit counts. */

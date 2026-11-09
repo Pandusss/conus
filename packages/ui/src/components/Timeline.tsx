@@ -2,11 +2,13 @@ import {
   ArrowRight, ArrowRightLeft, Ban, CircleCheck, CircleDot, CircleX, Eye, FolderInput, GitCommitHorizontal, GitMerge, Hand,
   Lightbulb, Pencil, Play, Plus, RotateCcw, StickyNote, ThumbsUp, Trash2, Undo2, type LucideIcon,
 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { EventDto } from '../api';
 import { useT, type Messages } from '../i18n';
-import { eventLabel, formatTime, isStatus, relativeTime } from '../labels';
+import { eventLabel, formatDay, formatTime, isPriority, isStatus, relativeTime } from '../labels';
 import { Avatar } from './Avatar';
+import { PriorityBadge } from './Planning';
 import { StatusPill } from './StatusPill';
 
 const EVENT_ICON: Record<string, LucideIcon> = {
@@ -23,6 +25,28 @@ const EVENT_TONE: Record<string, string> = {
 
 export const actorName = (e: Pick<EventDto, 'actorKind' | 'actorName'>, t: Messages): string =>
   e.actorKind === 'user' ? t.actor.you : e.actorKind === 'system' ? t.actor.system : e.actorName ?? t.actor.agent;
+
+function PriorityOrDash({ value }: { value: unknown }) {
+  if (isPriority(value)) return <PriorityBadge priority={value} always />;
+  return <span className="muted">{value === null || value === undefined ? '—' : String(value)}</span>;
+}
+
+function DayOrDash({ value }: { value: unknown }) {
+  const { t } = useT();
+  return <span className={value ? '' : 'muted'}>{typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? formatDay(value, t) : t.due.none}</span>;
+}
+
+/** «from → to» for one changed field. */
+function Change({ label, from, to }: { label?: string; from: ReactNode; to: ReactNode }) {
+  return (
+    <div className="tl-transition">
+      {label && <span className="muted tl-field">{label}</span>}
+      {from}
+      <ArrowRight size={14} aria-hidden /><span className="sr-only">→</span>
+      {to}
+    </div>
+  );
+}
 
 function StatusOrDash({ value }: { value: unknown }) {
   if (isStatus(value)) return <StatusPill status={value} />;
@@ -50,13 +74,11 @@ export function Timeline({ events }: { events: EventDto[] }) {
                 {e.model && <span className="muted tl-model">{e.model}</span>}
                 <time className="tl-time" dateTime={e.createdAt} title={formatTime(e.createdAt, t)}>{relativeTime(e.createdAt, t)}</time>
               </div>
-              {e.changes?.status && (
-                <div className="tl-transition">
-                  <StatusOrDash value={e.changes.status.from} />
-                  <ArrowRight size={14} aria-hidden /><span className="sr-only">→</span>
-                  <StatusOrDash value={e.changes.status.to} />
-                </div>
+              {e.changes?.status && <Change from={<StatusOrDash value={e.changes.status.from} />} to={<StatusOrDash value={e.changes.status.to} />} />}
+              {e.changes?.priority && (
+                <Change label={t.priority.label} from={<PriorityOrDash value={e.changes.priority.from} />} to={<PriorityOrDash value={e.changes.priority.to} />} />
               )}
+              {e.changes?.due && <Change label={t.due.label} from={<DayOrDash value={e.changes.due.from} />} to={<DayOrDash value={e.changes.due.to} />} />}
               {e.reason && <p className="tl-reason">{t.common.reasonLine(e.reason)}</p>}
               {e.note && <p className="tl-note">{e.note}</p>}
             </div>

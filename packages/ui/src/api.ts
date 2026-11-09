@@ -24,12 +24,27 @@ export async function api<T>(path: string, init: { method?: string; json?: unkno
 }
 
 export type Status = 'proposed' | 'todo' | 'in_progress' | 'blocked' | 'review' | 'done' | 'dropped';
+export type Priority = 'urgent' | 'high' | 'normal' | 'low';
 export interface HolderDto { agentName: string; sessionRef: string; sessionId: string }
 export interface TaskDto {
   id: string; ref: string; projectKey: string; projectName: string; title: string; description: string; status: Status; type: 'task' | 'bug';
   parentId: string | null; parentRef: string | null; result: string | null; blockReason: string | null; sourceQuote: string | null;
   claimedBySessionId: string | null; holder: HolderDto | null; subtaskCount: number; commitCount: number;
+  /** Who set the priority last; 'owner' means the manager will not change it. */
+  priority: Priority; prioritySource: 'default' | 'agent' | 'manager' | 'owner'; /** 'YYYY-MM-DD' */ dueOn: string | null;
   version: number; createdAt: string; updatedAt: string;
+}
+/** A task as the overview lists it: no long texts. */
+export type OverviewTaskDto = Omit<TaskDto, 'description' | 'sourceQuote' | 'result'>;
+export type OpenStatus = 'proposed' | 'todo' | 'in_progress' | 'blocked' | 'review';
+export interface ProjectOverviewDto {
+  id: string; key: string; name: string; counts: Record<OpenStatus, number>; doneThisWeek: number; lastActivityAt: string | null;
+  live: { id: string; ref: string; agentName: string; lastSeenAt: string }[];
+  inProgress: OverviewTaskDto[]; blocked: OverviewTaskDto[]; review: OverviewTaskDto[]; next: OverviewTaskDto[]; quiet: boolean;
+}
+export interface OverviewDto {
+  projects: ProjectOverviewDto[];
+  attention: { review: OverviewTaskDto[]; blocked: OverviewTaskDto[]; dated: OverviewTaskDto[]; proposals: number };
 }
 export interface EventDto {
   id: number; taskId: string; type: string; actorKind: 'agent' | 'user' | 'system'; actorName: string | null; sessionId: string | null;

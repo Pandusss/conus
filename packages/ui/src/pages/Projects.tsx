@@ -49,7 +49,7 @@ export function Projects() {
             </div>
             <p className="muted"><span className="num">{p.openCount}</span> {t.projects.openSuffix}</p>
             <div className="row-actions">
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setProject(p.key); nav('/'); }}>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setProject(p.key); nav('/board'); }}>
                 {t.projects.openBoard}<ArrowRight size={14} aria-hidden />
               </button>
               <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => setRenaming(p)}>

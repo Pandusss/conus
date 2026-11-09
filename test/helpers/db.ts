@@ -8,9 +8,15 @@ export async function createTestDb(): Promise<{ db: Db; url: string; drop: () =>
   const name = 't_' + randomBytes(6).toString('hex');
   const admin = new pg.Client({ connectionString: adminUrl });
   await admin.connect();
-  await admin.query(
-    `CREATE DATABASE ${name} ENCODING 'UTF8' TEMPLATE template0 LC_CTYPE 'en_US.utf8' LC_COLLATE 'en_US.utf8'`,
-  );
+  // en_US.utf8 ctype (pg_trgm on Cyrillic) is spelled en_US.UTF-8 on macOS.
+  for (const locale of ['en_US.utf8', 'en_US.UTF-8']) {
+    try {
+      await admin.query(`CREATE DATABASE ${name} ENCODING 'UTF8' TEMPLATE template0 LC_CTYPE '${locale}' LC_COLLATE '${locale}'`);
+      break;
+    } catch (e) {
+      if (locale === 'en_US.UTF-8') throw e;
+    }
+  }
   await admin.end();
   const u = new URL(adminUrl);
   u.pathname = '/' + name;

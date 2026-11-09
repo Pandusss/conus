@@ -1,6 +1,6 @@
 import { PROTOCOL_CORE } from '@conus/protocol';
 import type { Queryable } from './db';
-import { TASK_SELECT, countProposals, mapTask } from './tasks/queries';
+import { PRIORITY_ORDER, TASK_SELECT, countProposals, mapTask } from './tasks/queries';
 import { neutralizeAngles, truncate } from './text';
 import type { Project, Session, Task } from './types';
 import { t } from './lang';
@@ -22,6 +22,8 @@ const safe = (s: string, n: number) => cut(clean(s), n);
 /** Values placed inside the opening tag's attributes: no quotes or brackets, one line, bounded. */
 const attr = (s: string) => cut(s.replace(WHITESPACE_AND_CONTROL, ' ').replace(/["<>]/g, '').trim(), 100);
 const label = (t: Task) => `${safe(t.ref, 40)} «${safe(t.title, 100)}»`;
+/** «todo», «todo · urgent», «review · due 2026-11-12»: the default priority is not spelled out. */
+const planning = (t: Task) => [t.status, t.priority !== 'normal' ? t.priority : null, t.dueOn ? `due ${t.dueOn}` : null].filter(Boolean).join(' · ');
 
 /** Joins body and footer within max; when too long the body is cut, never the footer. */
 export function fitContext(body: string, footer: string, max = CONTEXT_MAX): string {
@@ -51,7 +53,7 @@ export async function renderSessionContext(
   const skip = new Set([...left, ...mine].map((t) => t.id));
   const openRows = await db.query(
     `${TASK_SELECT} WHERE t.project_id = $1 AND t.status IN ('todo','in_progress','blocked','review') AND t.deleted_at IS NULL
-     ORDER BY t.updated_at DESC`,
+     ORDER BY ${PRIORITY_ORDER}, t.updated_at DESC`,
     [project.id],
   );
   const open = openRows.rows.map(mapTask).filter((t) => !skip.has(t.id));
@@ -72,10 +74,10 @@ export async function renderSessionContext(
     '</task-manager>',
   ].join('\n');
   const nonBlocked = open.filter((t) => t.status !== 'blocked');
-  let openLines = nonBlocked.slice(0, 15).map((t) => `- ${label(t)} [${t.status}]`);
+  let openLines = nonBlocked.slice(0, 15).map((t) => `- ${label(t)} [${planning(t)}]`);
   const build = () => [
     ...head,
-    `Open, most recent first (${openLines.length} of ${nonBlocked.length}):`,
+    `Open, most important first (${openLines.length} of ${nonBlocked.length}):`,
     ...(openLines.length ? openLines : ['- —']),
     ...(blockedLines.length ? ['Blocked:', ...blockedLines] : []),
   ].join('\n');

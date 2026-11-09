@@ -1,8 +1,8 @@
 import {
-  agentHealthRollup, claimOwner, createAgent, createOwnerSession, deleteOwnerSession, dropTask, getSessionOverview, getTaskById, getTaskDetail,
+  agentHealthRollup, claimOwner, createAgent, createOwnerSession, deleteOwnerSession, dropTask, getOverview, getSessionOverview, getTaskById, getTaskDetail,
   getProjectByKey, hasOwner, healthWarnings, listAgents, listProjects, listSessionSummaries, listTasks, mergeDuplicate, mergeProjects,
-  ownerEditTask, ownerSetStatus, renameProject, revokeAgent, softDeleteTask, updateTask, validateOwnerSession,
-  t as tr, verifyOwnerPassword, DomainError, STATUSES, type Ctx, type Status,
+  ownerEditTask, ownerSetPlanning, ownerSetStatus, renameProject, revokeAgent, softDeleteTask, updateTask, validateOwnerSession,
+  t as tr, verifyOwnerPassword, DomainError, PRIORITIES, STATUSES, type Ctx, type Status,
 } from '@conus/core';
 import { Hono, type Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
@@ -88,6 +88,9 @@ export function uiRoutes(deps: AppDeps) {
     return c.json({ ok: true });
   });
 
+  // every project at a glance, and what waits for the owner
+  r.get('/overview', async (c) => c.json(await getOverview(db)));
+
   // projects
   r.get('/projects', async (c) => c.json({ projects: await listProjects(db) }));
   r.patch('/projects/:id', async (c) => {
@@ -120,6 +123,12 @@ export function uiRoutes(deps: AppDeps) {
     const taskId = idParam(c, 'Task');
     const b = parseWith(z.object({ title: z.string().optional(), description: z.string().optional(), expected_version: z.number().int() }), await c.req.json());
     return c.json(await ownerEditTask(user(), { taskId, title: b.title, description: b.description, expectedVersion: b.expected_version }));
+  });
+  // priority and due date; `due_on: null` clears the date
+  r.patch('/tasks/:id/planning', async (c) => {
+    const taskId = idParam(c, 'Task');
+    const b = parseWith(z.object({ priority: z.enum(PRIORITIES).optional(), due_on: z.string().max(10).nullable().optional() }), await c.req.json());
+    return c.json(await ownerSetPlanning(user(), { taskId, priority: b.priority, dueOn: b.due_on }));
   });
   r.post('/tasks/:id/status', async (c) => {
     const taskId = idParam(c, 'Task');

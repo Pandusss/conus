@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { apiError, json, mutations, renderPage, taskDto } from '../test-utils';
@@ -64,6 +64,51 @@ describe('TaskDrawer', () => {
     await userEvent.keyboard('{Escape}');
     expect(screen.getByTestId('where').textContent).toBe('/');
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('opened from the board, closes back to the board', async () => {
+    mockServer();
+    renderPage(
+      <><Routes><Route path="/board" element={null} /><Route path="/board/tasks/:id" element={<TaskDrawer />} /></Routes><Where /></>,
+      { path: `/board/tasks/${ID}` },
+    );
+    await screen.findByText('Починить логин');
+    await userEvent.keyboard('{Escape}');
+    expect(screen.getByTestId('where').textContent).toBe('/board');
+  });
+
+  it('sets the priority and shows that the owner pinned it', async () => {
+    const f = mockServer();
+    mount();
+    await screen.findByText('Починить логин');
+    expect(screen.queryByText(/главный агент его не меняет/)).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Приоритет: Обычный' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Срочно' }));
+    await waitFor(() => expect(mutations(f)).toEqual([{ call: `PATCH /api/ui/tasks/${ID}/planning`, body: '{"priority":"urgent"}' }]));
+  });
+
+  it('shows a pinned priority and the due date with a way to remove it', async () => {
+    const f = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) =>
+      ((init as RequestInit | undefined)?.method ?? 'GET') !== 'GET'
+        ? json({ ok: true })
+        : json({ ...detail, task: { ...task, priority: 'urgent', prioritySource: 'owner', dueOn: '2030-11-12' } }));
+    mount();
+    expect(await screen.findByRole('button', { name: 'Приоритет: Срочно' })).toBeTruthy();
+    expect(screen.getByText('задан вами — главный агент его не меняет')).toBeTruthy();
+    expect((screen.getByLabelText('Срок') as HTMLInputElement).value).toBe('2030-11-12');
+    await userEvent.click(screen.getByRole('button', { name: 'Снять срок' }));
+    await waitFor(() => expect(mutations(f)).toEqual([{ call: `PATCH /api/ui/tasks/${ID}/planning`, body: '{"due_on":null}' }]));
+  });
+
+  it('sets the due date, ignoring half-typed years', async () => {
+    const f = mockServer();
+    mount();
+    await screen.findByText('Починить логин');
+    const input = screen.getByLabelText('Срок') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '0002-11-12' } }); // what a browser reports while the year is typed
+    expect(mutations(f)).toEqual([]);
+    fireEvent.change(input, { target: { value: '2030-11-12' } });
+    await waitFor(() => expect(mutations(f)).toEqual([{ call: `PATCH /api/ui/tasks/${ID}/planning`, body: '{"due_on":"2030-11-12"}' }]));
   });
 
   it('saves with the version captured when editing started, even if the task was refreshed meanwhile', async () => {

@@ -111,6 +111,36 @@ describe('UI API', () => {
     expect(detail.subtasks[0]).toMatchObject({ id: kid.task.id, projectName: s.project.name, holder: null });
   });
 
+  it('planning: the owner sets priority and due date, clears the date; bad input is a validation error', async () => {
+    const s = await seedAgentSession(db, { remote: 'git@github.com:me/ui-plan.git' });
+    const r = await createTask({ db, actor: s.actor }, { projectId: s.project.id, title: 'Plan me' });
+    if (r.outcome !== 'created') throw new Error();
+    const set = await mutate(`/tasks/${r.task.id}/planning`, 'PATCH', { priority: 'high', due_on: '2026-12-01' });
+    expect(set.status).toBe(200);
+    expect((await set.json()).task).toMatchObject({ priority: 'high', prioritySource: 'owner', dueOn: '2026-12-01' });
+    const listed = (await (await req('/tasks?project=' + s.project.key)).json()).tasks.find((t: any) => t.id === r.task.id);
+    expect(listed).toMatchObject({ priority: 'high', dueOn: '2026-12-01' });
+    expect((await (await mutate(`/tasks/${r.task.id}/planning`, 'PATCH', { due_on: null })).json()).task.dueOn).toBeNull();
+    for (const body of [{ priority: 'asap' }, { due_on: '2026-02-30' }, { due_on: 'soon' }]) {
+      const bad = await mutate(`/tasks/${r.task.id}/planning`, 'PATCH', body);
+      expect(bad.status, JSON.stringify(body)).toBe(400);
+      expect((await bad.json()).error.code).toBe('validation');
+    }
+    expect((await req(`/tasks/${r.task.id}/planning`, { method: 'PATCH', json: { priority: 'low' } })).status).toBe(403); // no CSRF token
+  });
+
+  it('overview: every project with its counts, and what waits for the owner', async () => {
+    const s = await seedAgentSession(db, { remote: 'git@github.com:me/ui-ov.git' });
+    const r = await createTask({ db, actor: s.actor }, { projectId: s.project.id, title: 'Overview item' });
+    if (r.outcome !== 'created') throw new Error();
+    const o = await (await req('/overview')).json();
+    const p = o.projects.find((x: any) => x.id === s.project.id);
+    expect(p).toMatchObject({ key: s.project.key, counts: { todo: 1 }, quiet: false });
+    expect(p.live.map((l: any) => l.ref)).toEqual([s.session.ref]);
+    expect(p.next[0]).toMatchObject({ ref: r.task.ref, priority: 'normal' });
+    expect(o.attention).toMatchObject({ review: expect.any(Array), blocked: expect.any(Array), dated: expect.any(Array), proposals: expect.any(Number) });
+  });
+
   it('non-UUID path ids are 404 not_found, not 500', async () => {
     const get = async (path: string) => {
       const r = await req(path);

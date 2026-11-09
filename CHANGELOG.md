@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- The web app opens on an **Overview**: every project on one screen — what is in progress and which agent is on it,
+  what is blocked and why, what waits for your check, what is next, and a «Waiting for you» list across projects
+  (checks, blockers, deadlines, proposals). Quiet projects fold away. The board moved to `/board`.
+- Tasks have a **priority** (urgent / high / normal / low) and a **due date**. Set them in the task or from a card's
+  menu; the board puts the most urgent work on top of each open column, and agents see their project's open tasks in
+  that order at session start, with the priority and date spelled out. A priority you set is pinned.
 - `install.sh` works without a terminal (CI, `ssh` without a tty): it used to stop at the domain question.
 - A workflow runs the newcomer's path on a clean machine after every release and weekly: the installer, the
   first-run setup, `conus-cli` from npm, `conus setup` and the MCP bridge.

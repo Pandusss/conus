@@ -146,4 +146,16 @@ CREATE TABLE owner_sessions (
 );
 `,
   },
+  {
+    // Priority and due date. priority_source says who set the priority last: the owner's choice is never
+    // overwritten by the manager.
+    name: '0002_planning',
+    sql: /* sql */ `
+ALTER TABLE tasks ADD COLUMN priority text NOT NULL DEFAULT 'normal' CHECK (priority IN ('urgent','high','normal','low'));
+ALTER TABLE tasks ADD COLUMN priority_source text NOT NULL DEFAULT 'default'
+  CHECK (priority_source IN ('default','agent','manager','owner'));
+ALTER TABLE tasks ADD COLUMN due_on date;
+CREATE INDEX tasks_due_idx ON tasks(due_on) WHERE due_on IS NOT NULL AND deleted_at IS NULL;
+`,
+  },
 ];

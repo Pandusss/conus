@@ -1,7 +1,36 @@
 import { describe, expect, it } from 'vitest';
 import { en } from './i18n/en';
 import { ru } from './i18n/ru';
-import { eventLabel, formatDuration, formatTime, initials, kindLabel, relativeTime, ruleLabel, sessionStateLabel, statusLabel } from './labels';
+import { daysUntil, dueLabel, dueState, eventLabel, formatDay, formatDuration, formatTime, initials, kindLabel, localToday, relativeTime, ruleLabel, sessionStateLabel, statusLabel } from './labels';
+
+describe('due dates', () => {
+  // 9 November 2026, late evening local time: the day must not slip to the 10th through UTC
+  const now = new Date(2026, 10, 9, 23, 30);
+  it('count whole days from the local today', () => {
+    expect(localToday(now)).toBe('2026-11-09');
+    expect(daysUntil('2026-11-09', now)).toBe(0);
+    expect(daysUntil('2026-11-10', now)).toBe(1);
+    expect(daysUntil('2026-11-07', now)).toBe(-2);
+    expect(daysUntil('2027-01-01', now)).toBe(53);
+  });
+  it('rate how pressing a date is', () => {
+    expect(dueState('2026-11-08', now)).toBe('overdue');
+    expect(dueState('2026-11-09', now)).toBe('today');
+    expect(dueState('2026-11-12', now)).toBe('soon');
+    expect(dueState('2026-11-13', now)).toBe('later');
+  });
+  it('word the date for people', () => {
+    expect(dueLabel('2026-11-07', ru, now)).toBe('Просрочено на 2 дня');
+    expect(dueLabel('2026-11-04', ru, now)).toBe('Просрочено на 5 дней');
+    expect(dueLabel('2026-11-08', en, now)).toBe('Overdue 1 d');
+    expect(dueLabel('2026-11-09', ru, now)).toBe('Срок сегодня');
+    expect(dueLabel('2026-11-10', en, now)).toBe('Tomorrow');
+    expect(dueLabel('2026-11-12', ru, now)).toBe('Через 3 дня');
+    expect(dueLabel('2026-11-30', en, now)).toBe('Nov 30');
+    expect(dueLabel('2027-02-01', en, now)).toBe('Feb 1, 2027');
+    expect(formatDay('2026-11-12', ru)).toBe('12 ноября 2026 г.');
+  });
+});
 
 describe('labels', () => {
   it('translates statuses, falling back to the raw value or a dash', () => {

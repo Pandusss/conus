@@ -2,7 +2,7 @@ import { withTx } from '../db';
 import { DomainError } from '../errors';
 import { appendEvent } from '../events';
 import { chatNote } from '../chat-note';
-import type { Ctx, MutationResult, Status, Task } from '../types';
+import { PRIORITIES, type Ctx, type MutationResult, type Priority, type Status, type Task } from '../types';
 import { TASK_SELECT, getTaskById, mapTask } from './queries';
 import { optionalText, requireText } from './validate';
 import { t as tr } from '../lang';
@@ -60,6 +60,49 @@ export async function ownerEditTask(
       [task.id, title, description],
     );
     await appendEvent(tx, { taskId: task.id, type: 'updated', actor: ctx.actor, changes });
+    const t = (await getTaskById(tx, task.id))!;
+    return { task: t, chatNote: chatNote('updated', t) };
+  });
+}
+
+/** A calendar date 'YYYY-MM-DD' that exists (no 2026-02-30), within a sane range. */
+export function parseDueDate(v: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  const d = m ? new Date(Date.UTC(+m[1]!, +m[2]! - 1, +m[3]!)) : null;
+  if (!m || !d || d.toISOString().slice(0, 10) !== v || +m[1]! < 2000 || +m[1]! > 2100) {
+    throw new DomainError('validation', 'due_on must be a date YYYY-MM-DD.', { field: 'due_on' });
+  }
+  return v;
+}
+
+/**
+ * The owner sets a task's priority and/or due date (`dueOn: null` clears it). A priority the owner sets is pinned:
+ * the manager will not change it later. Changes go to the history as one `updated` event.
+ */
+export async function ownerSetPlanning(
+  ctx: Ctx, input: { taskId: string; priority?: Priority; dueOn?: string | null },
+): Promise<MutationResult> {
+  assertOwner(ctx);
+  if (input.priority !== undefined && !(PRIORITIES as readonly string[]).includes(input.priority)) {
+    throw new DomainError('validation', `priority must be one of ${PRIORITIES.join(', ')}.`, { field: 'priority' });
+  }
+  const dueOn = input.dueOn === undefined || input.dueOn === null ? input.dueOn : parseDueDate(input.dueOn);
+  return withTx(ctx.db, async (tx) => {
+    const task = assertLive(await getTaskById(tx, input.taskId, { forUpdate: true }));
+    const changes: Record<string, { from: unknown; to: unknown }> = {};
+    if (input.priority !== undefined && input.priority !== task.priority) changes.priority = { from: task.priority, to: input.priority };
+    if (dueOn !== undefined && dueOn !== task.dueOn) changes.due = { from: task.dueOn, to: dueOn };
+    const pin = input.priority !== undefined && task.prioritySource !== 'owner';
+    if (!Object.keys(changes).length && !pin) return { task, chatNote: chatNote('updated', task) };
+    await tx.query(
+      `UPDATE tasks SET priority = COALESCE($2, priority), priority_source = CASE WHEN $2::text IS NULL THEN priority_source ELSE 'owner' END,
+         due_on = CASE WHEN $3::boolean THEN $4::date ELSE due_on END,
+         version = version + CASE WHEN $5::boolean THEN 1 ELSE 0 END, updated_at = CASE WHEN $5::boolean THEN now() ELSE updated_at END
+       WHERE id = $1`,
+      [task.id, input.priority ?? null, dueOn !== undefined, dueOn ?? null, Object.keys(changes).length > 0],
+    );
+    // Re-choosing the current priority only pins it: no history event for a value that did not change.
+    if (Object.keys(changes).length) await appendEvent(tx, { taskId: task.id, type: 'updated', actor: ctx.actor, changes });
     const t = (await getTaskById(tx, task.id))!;
     return { task: t, chatNote: chatNote('updated', t) };
   });
