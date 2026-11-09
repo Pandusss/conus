@@ -131,6 +131,8 @@ describe('overview', () => {
     expect(alpha.inProgress[0]!.holder?.sessionRef).toBe(a.session.ref);
     expect(alpha.blocked.map((t) => t.blockReason)).toEqual(['needs API keys']);
     expect(alpha.review.map((t) => t.ref)).toEqual([check.ref]);
+    expect(alpha.reviewSince).toEqual(alpha.review[0]!.updatedAt);
+    expect(alpha.lastAgentAt).toEqual(alpha.live[0]!.lastSeenAt);
     expect(alpha.next.map((t) => t.ref)).toEqual([first.ref, later.ref]);
     expect(alpha.quiet).toBe(false);
     // the overview carries no long texts
@@ -138,6 +140,8 @@ describe('overview', () => {
 
     const beta = o.projects.find((p) => p.id === b.project.id)!;
     expect(beta.live).toEqual([]);
+    expect(beta.reviewSince).toBeNull();
+    expect(beta.lastAgentAt).toBeInstanceOf(Date); // the ended session still says when an agent was here
     expect(beta.quiet).toBe(false); // nothing open, but there was a session today
     // live projects come first
     expect(o.projects.findIndex((p) => p.id === a.project.id)).toBeLessThan(o.projects.findIndex((p) => p.id === b.project.id));
@@ -146,6 +150,27 @@ describe('overview', () => {
     expect(o.attention.blocked.map((t) => t.ref)).toContain(stuck.ref);
     expect(o.attention.dated.map((t) => t.ref)).toContain(first.ref);
     expect(o.attention.proposals).toBeGreaterThanOrEqual(1);
+  });
+
+  it('lists what waits for a check longest-waiting first, and the owner\'s edits do not count as agent activity', async () => {
+    const a = await seed('git@github.com:me/ov-wait.git');
+    const send = async (title: string) => {
+      const x = await a.mk(title);
+      await startTask(a.ctx, { projectId: a.project.id, task: x.ref });
+      await completeTask(a.ctx, { projectId: a.project.id, task: x.ref, result: 'look', needsReview: true });
+      return x;
+    };
+    const old = await send('Waits longest');
+    const fresh = await send('Sent just now');
+    await db.query(`UPDATE tasks SET updated_at = now() - interval '5 days' WHERE id = $1`, [old.id]);
+    await db.query(`UPDATE sessions SET last_seen_at = now() - interval '3 days' WHERE id = $1`, [a.session.id]);
+    await ownerSetPlanning(owner(), { taskId: fresh.id, priority: 'urgent' }); // the owner touches the project today
+
+    const p = (await getOverview(db)).projects.find((x) => x.id === a.project.id)!;
+    expect(p.review.map((t) => t.ref)).toEqual([old.ref, fresh.ref]);
+    expect(Date.now() - p.reviewSince!.getTime()).toBeGreaterThan(4 * 86_400_000);
+    expect(Date.now() - p.lastAgentAt!.getTime()).toBeGreaterThan(2 * 86_400_000);
+    expect(Date.now() - p.lastActivityAt!.getTime()).toBeLessThan(60_000);
   });
 
   it('marks a project quiet when nothing is open and nothing happened for 30 days', async () => {

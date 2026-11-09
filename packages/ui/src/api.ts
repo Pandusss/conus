@@ -39,6 +39,8 @@ export type OverviewTaskDto = Omit<TaskDto, 'description' | 'sourceQuote' | 'res
 export type OpenStatus = 'proposed' | 'todo' | 'in_progress' | 'blocked' | 'review';
 export interface ProjectOverviewDto {
   id: string; key: string; name: string; counts: Record<OpenStatus, number>; doneThisWeek: number; lastActivityAt: string | null;
+  /** When an agent was last seen in the project, and since when its longest-waiting task waits for a check. */
+  lastAgentAt: string | null; reviewSince: string | null;
   live: { id: string; ref: string; agentName: string; lastSeenAt: string }[];
   inProgress: OverviewTaskDto[]; blocked: OverviewTaskDto[]; review: OverviewTaskDto[]; next: OverviewTaskDto[]; quiet: boolean;
 }

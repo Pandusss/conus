@@ -18,9 +18,12 @@
   reason for a block or a priority change on its own line, long parts folded into a quote. A long review comes as
   several messages instead of being cut.
 - Tasks can be moved to another project (the drawer's menu, or the bot's 📁 button).
-- The web app opens on an **Overview**: every project on one screen — what is in progress and which agent is on it,
-  what is blocked and why, what waits for your check, what is next, and a «Waiting for you» list across projects
-  (checks, blockers, deadlines, proposals). Quiet projects fold away. The board moved to `/board`.
+- The web app opens on an **Overview**: one line per project — what is happening there now, what waits for you
+  (checks, blockers, overdue dates, proposals), the queue, what got done in a week and when an agent was last there.
+  Projects that need you come first, then the ones agents are working on, the idle ones, and those without open
+  tasks folded away; a sentence on top says how many projects wait for you. A line opens into the project's tasks:
+  what to check and how long it has waited, what is blocked and why, what is in progress and what is next. The
+  manager's review folds into one line. The board moved to `/board`.
 - Tasks have a **priority** (urgent / high / normal / low) and a **due date**. Set them in the task or from a card's
   menu; the board puts the most urgent work on top of each open column, and agents see their project's open tasks in
   that order at session start, with the priority and date spelled out. A priority you set is pinned.

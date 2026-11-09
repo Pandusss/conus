@@ -131,9 +131,9 @@ are never tracked.
 
 ## The manager and Telegram
 
-The web app opens on an **Overview** of every project: who works on what right now, what is blocked and why, what
-waits for your check, what is next, and deadlines. Tasks have a priority and a due date; agents see their project's
-tasks most important first.
+The web app opens on an **Overview** of every project, the ones that need you first: who works on what right now,
+what is blocked and why, what waits for your check, what is next, and deadlines. Tasks have a priority and a due
+date; agents see their project's tasks most important first.
 
 With an Anthropic API key on the server, a **manager** works on top of the agents:
 
