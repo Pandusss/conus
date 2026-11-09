@@ -10,6 +10,13 @@
 - **Telegram**: set `CONUS_TELEGRAM_BOT_TOKEN` and link your chat in the new Settings page: a morning digest, notices
   when a task waits for your check (accept or return it with a button) or an agent is blocked, quiet hours, `/digest`
   and `/review`. Long polling: no public webhook.
+- **Reminders**: between digests the bot reminds you every few hours (3 by default; 1–12 or off in Settings) for as
+  long as something waits for you: checks, blockers, deadlines, proposals, the unfinished focus. Nothing waits, no
+  message. Quiet hours hold, a reminder right before the digest or right after a fresh notice is skipped, and one
+  button silences them until the next digest. `/now` shows the list on demand.
+- The bot's messages are easier to read: a headline, sections with counts, each task a link to it in the web app, the
+  reason for a block or a priority change on its own line, long parts folded into a quote. A long review comes as
+  several messages instead of being cut.
 - Tasks can be moved to another project (the drawer's menu, or the bot's 📁 button).
 - The web app opens on an **Overview**: every project on one screen — what is in progress and which agent is on it,
   what is blocked and why, what waits for your check, what is next, and a «Waiting for you» list across projects

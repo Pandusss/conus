@@ -246,13 +246,16 @@ describe('digest and notifications', () => {
     llm.reviewResult = { summary: 'All calm.', focus: [{ ref: a.ref, why: 'it matters' }], priorities: [], findings: [] };
     await runReview({ db, llm }, 'daily');
     const text = await buildDigest(db, 'https://conus.example.com', new Date());
-    expect(text).toContain('All calm.');
-    expect(text).toContain(`1. <b>${a.ref}</b> Focus on me`);
-    expect(text).toContain('Focus for today');
-    expect(text).toContain('Waiting for you');
-    expect(text).toContain('To check');
-    expect(text).toContain('Projects');
-    expect(text).toContain('<a href="https://conus.example.com">Open Conus</a>');
+    expect(text).toMatch(/^☀️ <b>Digest · \w+, \w+ \d+<\/b>\n<blockquote>All calm\.<\/blockquote>\n\n🎯 <b>Focus for today<\/b>\n/);
+    expect(text).toContain(`1. <a href="https://conus.example.com/tasks/${a.id}">${a.ref}</a> Focus on me\n    <i>it matters</i>`);
+    expect(text).toMatch(/👀 <b>To check · \d+<\/b>\n• <a href=/);
+    expect(text).toMatch(/⛔ <b>Blocked · \d+<\/b>\n/);
+    expect(text).toContain('<a href="https://conus.example.com/proposals">');
+    expect(text).toContain('📊 <b>Projects</b>\n<blockquote');
     expect(text.length).toBeLessThanOrEqual(4000);
+    // without an address that opens from a phone the refs are bold, and nothing links anywhere
+    const local = await buildDigest(db, null, new Date());
+    expect(local).toContain(`1. <b>${a.ref}</b> Focus on me`);
+    expect(local).not.toContain('<a ');
   });
 });

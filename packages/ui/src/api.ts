@@ -66,6 +66,8 @@ export interface WarningDto { kind: string; agentId: string; agentName: string; 
 export interface SettingsDto {
   settings: {
     timeZone: string; digestTime: string; quietFrom: string; quietTo: string; notifyReview: boolean; notifyBlocked: boolean;
+    /** Hours between reminders; 0 means off. */
+    remindEveryHours: number;
     managerAuto: boolean; telegramUsername: string | null; telegramLinked: boolean;
   };
   telegram: { configured: boolean; botUsername: string | null; error: string | null };

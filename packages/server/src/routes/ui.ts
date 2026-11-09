@@ -212,7 +212,7 @@ export function uiRoutes(deps: AppDeps) {
   });
   const settingsBody = async () => {
     const s = await getSettings(db);
-    const { lastDigestOn: _d, lastReviewOn: _r, telegramChatId, ...rest } = s;
+    const { lastDigestOn: _d, lastReviewOn: _r, lastReminderAt: _m, remindersMuted: _q, telegramChatId, ...rest } = s;
     return { settings: { ...rest, telegramLinked: telegramChatId != null }, ...managerState() };
   };
   r.get('/settings', async (c) => c.json(await settingsBody()));
@@ -221,10 +221,11 @@ export function uiRoutes(deps: AppDeps) {
     const b = parseWith(z.object({
       time_zone: z.string().max(64).optional(), digest_time: time.optional(), quiet_from: time.optional(), quiet_to: time.optional(),
       notify_review: z.boolean().optional(), notify_blocked: z.boolean().optional(), manager_auto: z.boolean().optional(),
+      remind_every_hours: z.number().int().min(0).max(24).optional(),
     }), await c.req.json());
     await updateSettings(db, {
       timeZone: b.time_zone, digestTime: b.digest_time, quietFrom: b.quiet_from, quietTo: b.quiet_to,
-      notifyReview: b.notify_review, notifyBlocked: b.notify_blocked, managerAuto: b.manager_auto,
+      notifyReview: b.notify_review, notifyBlocked: b.notify_blocked, managerAuto: b.manager_auto, remindEveryHours: b.remind_every_hours,
     });
     return c.json(await settingsBody());
   });
@@ -243,7 +244,8 @@ export function uiRoutes(deps: AppDeps) {
   r.post('/telegram/test', async (c) => {
     const chat = (await getSettings(db)).telegramChatId;
     if (!deps.manager?.api || chat == null) throw new DomainError('unavailable', 'Telegram is not linked.', { reason: 'telegram_off' });
-    await deps.manager.api.sendMessage(chat, tr('👋 Conus is here. Notices and digests will come to this chat.', '👋 Conus на связи. Уведомления и сводки будут приходить сюда.'));
+    await deps.manager.api.sendMessage(chat, tr('👋 <b>Conus is here.</b>\nDigests, reminders and notices will come to this chat. /help — what I can do.',
+      '👋 <b>Conus на связи.</b>\nСводки, напоминания и уведомления будут приходить сюда. /help — что я умею.'));
     return c.json({ ok: true });
   });
   r.post('/intake', async (c) => {

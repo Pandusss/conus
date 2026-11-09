@@ -12,15 +12,20 @@ export interface OwnerSettings {
   notifyReview: boolean; notifyBlocked: boolean;
   /** The daily review may change priorities by itself (never ones the owner set). */
   managerAuto: boolean;
+  /** Reminders between digests, every this many hours while something waits for the owner; 0 turns them off. */
+  remindEveryHours: number;
+  /** When the last reminder (or digest) went out, and whether the owner silenced reminders until the next digest. */
+  lastReminderAt: Date | null; remindersMuted: boolean;
   telegramChatId: number | null; telegramUsername: string | null;
   lastDigestOn: string | null; lastReviewOn: string | null;
 }
 
-export type SettingsPatch = Partial<Pick<OwnerSettings, 'timeZone' | 'digestTime' | 'quietFrom' | 'quietTo' | 'notifyReview' | 'notifyBlocked' | 'managerAuto'>>;
+export type SettingsPatch = Partial<Pick<OwnerSettings, 'timeZone' | 'digestTime' | 'quietFrom' | 'quietTo' | 'notifyReview' | 'notifyBlocked' | 'managerAuto' | 'remindEveryHours'>>;
 
 const map = (r: any): OwnerSettings => ({
   timeZone: r.time_zone, digestTime: r.digest_time, quietFrom: r.quiet_from, quietTo: r.quiet_to,
   notifyReview: r.notify_review, notifyBlocked: r.notify_blocked, managerAuto: r.manager_auto,
+  remindEveryHours: r.remind_every_hours, lastReminderAt: r.last_reminder_at, remindersMuted: r.reminders_muted,
   telegramChatId: r.telegram_chat_id == null ? null : Number(r.telegram_chat_id), telegramUsername: r.telegram_username,
   lastDigestOn: r.last_digest_on, lastReviewOn: r.last_review_on,
 });
@@ -49,15 +54,19 @@ export async function updateSettings(q: Queryable, patch: SettingsPatch): Promis
   for (const k of ['digestTime', 'quietFrom', 'quietTo'] as const) {
     if (patch[k] !== undefined && !TIME_RE.test(patch[k]!)) throw new DomainError('validation', `${k} must be HH:MM.`, { field: k });
   }
+  const every = patch.remindEveryHours;
+  if (every !== undefined && (!Number.isInteger(every) || every < 0 || every > 24)) {
+    throw new DomainError('validation', 'remindEveryHours must be a whole number of hours from 0 to 24.', { field: 'remind_every_hours' });
+  }
   const { rows } = await q.query(
     `UPDATE owner_settings SET
        time_zone = COALESCE($1, time_zone), digest_time = COALESCE($2, digest_time),
        quiet_from = COALESCE($3, quiet_from), quiet_to = COALESCE($4, quiet_to),
        notify_review = COALESCE($5, notify_review), notify_blocked = COALESCE($6, notify_blocked),
-       manager_auto = COALESCE($7, manager_auto), updated_at = now()
+       manager_auto = COALESCE($7, manager_auto), remind_every_hours = COALESCE($8, remind_every_hours), updated_at = now()
      WHERE id = 1 RETURNING *`,
     [patch.timeZone ?? null, patch.digestTime ?? null, patch.quietFrom ?? null, patch.quietTo ?? null,
-      patch.notifyReview ?? null, patch.notifyBlocked ?? null, patch.managerAuto ?? null],
+      patch.notifyReview ?? null, patch.notifyBlocked ?? null, patch.managerAuto ?? null, every ?? null],
   );
   return map(rows[0]);
 }

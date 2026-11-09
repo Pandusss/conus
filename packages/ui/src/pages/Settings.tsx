@@ -6,7 +6,10 @@ import { ErrorLine, useActionError } from '../components/ErrorLine';
 import { useToast } from '../components/Toast';
 import { useT } from '../i18n';
 
-type Patch = Partial<{ time_zone: string; digest_time: string; quiet_from: string; quiet_to: string; notify_review: boolean; notify_blocked: boolean; manager_auto: boolean }>;
+type Patch = Partial<{ time_zone: string; digest_time: string; quiet_from: string; quiet_to: string; notify_review: boolean; notify_blocked: boolean; manager_auto: boolean; remind_every_hours: number }>;
+
+/** How often the bot may remind: off, or every this many hours. */
+const REMIND_HOURS = [0, 1, 2, 3, 4, 6, 8, 12];
 
 /** Every IANA zone the browser knows, the browser's own first. */
 function timeZones(current: string): string[] {
@@ -36,7 +39,7 @@ export function Settings() {
     onSuccess: (d) => { qc.setQueryData(['settings'], d); setLink(null); toast(t.settings.unlinked); }, ...track,
   });
   const test = useMutation({ mutationFn: () => api('/telegram/test', { method: 'POST' }), onSuccess: () => toast(t.settings.tested), ...track });
-  const ids = { tz: useId(), digest: useId(), from: useId(), to: useId() };
+  const ids = { tz: useId(), digest: useId(), remind: useId(), from: useId(), to: useId() };
   const d = q.data;
   const s = d?.settings;
   const busy = save.isPending;
@@ -100,6 +103,16 @@ export function Settings() {
                 <input id={ids.digest} type="time" value={s.digestTime} disabled={busy}
                   onChange={(e) => { if (/^\d\d:\d\d$/.test(e.target.value)) save.mutate({ digest_time: e.target.value }); }} />
               </div>
+            </div>
+            <div className="field">
+              <label htmlFor={ids.remind}>{t.settings.remind}</label>
+              <select id={ids.remind} className="select remind-select" value={s.remindEveryHours} disabled={busy}
+                onChange={(e) => save.mutate({ remind_every_hours: Number(e.target.value) })}>
+                {[...new Set([...REMIND_HOURS, s.remindEveryHours])].sort((a, b) => a - b).map((n) => (
+                  <option key={n} value={n}>{n === 0 ? t.settings.remindOff : t.settings.remindEvery(n)}</option>
+                ))}
+              </select>
+              <span className="field-hint">{t.settings.remindHint}</span>
             </div>
             <div className="field">
               <span className="field-label">{t.settings.quiet}</span>

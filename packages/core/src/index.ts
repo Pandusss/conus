@@ -31,6 +31,7 @@ export * from './settings';
 export * from './manager/llm';
 export * from './manager/intake';
 export * from './manager/review';
+export * from './manager/format';
 export * from './manager/digest';
 export * from './lang';
 export * from './text';

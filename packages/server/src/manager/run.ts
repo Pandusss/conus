@@ -20,7 +20,7 @@ export interface ManagerOptions {
 
 /**
  * Starts the manager: the Telegram bot (long polling: no public webhook needed), immediate notices, the inbox of
- * forwarded messages, and the daily review and digest. Stopping does not wait for an in-flight long poll.
+ * forwarded messages, the daily review and digest, and the reminders between digests. Stopping does not wait for an in-flight long poll.
  */
 export function startManager(o: ManagerOptions): { status: ManagerStatus; stop(): void; ready: Promise<void> } {
   const log = o.log ?? ((m: string) => console.log(`[manager] ${m}`));
@@ -36,7 +36,7 @@ export function startManager(o: ManagerOptions): { status: ManagerStatus; stop()
       try { await fn(); } catch (e) { log(`${name} failed: ${e instanceof Error ? e.message : String(e)}`); } finally { busy = false; }
     };
   };
-  const tick = guard('tick', async () => { await bot.sendNotices(); await bot.dailyRun(); });
+  const tick = guard('tick', async () => { await bot.sendNotices(); await bot.dailyRun(); await bot.remind(); });
   const flush = guard('inbox', () => bot.flushInbox());
   const timers = [setInterval(tick, o.tickMs ?? 15_000), setInterval(flush, o.flushMs ?? 2_000)];
   timers.forEach((x) => x.unref());
@@ -80,7 +80,8 @@ export function startManager(o: ManagerOptions): { status: ManagerStatus; stop()
         status.telegram.error = null;
         await api.deleteWebhook();
         await api.setMyCommands([
-          { command: 'digest', description: t('The digest now', 'Сводка сейчас') },
+          { command: 'now', description: t('What waits for me now', 'Что ждёт меня сейчас') },
+          { command: 'digest', description: t('The digest', 'Сводка') },
           { command: 'review', description: t('Review all projects now', 'Ревизия всех проектов') },
           { command: 'help', description: t('What I can do', 'Что я умею') },
         ]);

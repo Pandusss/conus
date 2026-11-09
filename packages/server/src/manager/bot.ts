@@ -1,14 +1,18 @@
 import {
-  DomainError, buildDigest, dropTask, esc, getIntakeBatch, getSettings, getTaskById, getTaskDetail, inQuietHours, latestReview, linkTelegramChat,
-  localClock, markNotified, notifiedUpTo, ownerMoveTask, ownerSetStatus, pendingNotices, renderNotice, runIntake, runReview,
-  setBatchTelegramMessage, t, truncate, updateTask, type Ctx, type Db, type IntakeBatch, type ManagerLlm, type ManagerReview, type Notice,
+  DomainError, buildDigest, buildNow, dropTask, esc, fitted, getIntakeBatch, getSettings, getTaskById, getTaskDetail, heading, inQuietHours,
+  latestReview, link, linkBase, linkTelegramChat, localClock, markNotified, notifiedUpTo, ownerMoveTask, ownerSetStatus, pendingNotices,
+  plainText, plural, quote, renderNotice, renderNoticeBurst, renderReview, runIntake, runReview, section, setBatchTelegramMessage, shortDate,
+  t, taskLink, truncate, updateTask, type Ctx, type Db, type IntakeBatch, type ManagerLlm, type Notice, type OwnerSettings,
 } from '@conus/core';
-import type { TelegramClient, TgCallbackQuery, TgForwardOrigin, TgKeyboard, TgMessage, TgUpdate } from '../telegram/api';
+import { TelegramError, type TelegramClient, type TgCallbackQuery, type TgForwardOrigin, type TgKeyboard, type TgMessage, type TgUpdate } from '../telegram/api';
 
 /** Forwarded messages that arrive within this pause are read as one conversation. */
 export const INBOX_QUIET_MS = 5_000;
 /** More notices than this at once go out as one message. */
 const NOTICE_BURST = 5;
+/** A reminder waits this long after an immediate notice: two pings in a row say the same thing. */
+const NOTICE_GAP_MS = 30 * 60_000;
+const HOUR = 3_600_000;
 
 export interface BotDeps {
   /** null without a bot token: the daily review still runs, nothing is sent. */
@@ -20,7 +24,7 @@ export interface BotDeps {
 }
 
 const owner = (db: Db): Ctx => ({ db, actor: { kind: 'user' } });
-const linkable = (url: string) => /^https:\/\//.test(url) && !/^https:\/\/(localhost|127\.|\[::1\])/.test(url);
+const minutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 
 function authorOf(o: TgForwardOrigin | undefined, fallback: string | null): string | null {
   if (!o) return fallback;
@@ -32,69 +36,134 @@ function authorOf(o: TgForwardOrigin | undefined, fallback: string | null): stri
   }
 }
 
-const helpText = () => [
-  t('<b>Conus manager</b>', '<b>Главный агент Conus</b>'),
-  '',
-  t('Forward me messages from clients, colleagues or investors, or just write what needs doing: I will file the work as proposals in the right projects.',
-    'Пересылай мне переписку с заказчиками, коллегами, инвестором или просто пиши, что нужно сделать — я разложу задачи по проектам как предложения.'),
-  '',
-  t('Every morning I send a digest; tasks waiting for your check or blocked come right away (not at night).',
-    'Каждое утро присылаю сводку; задачи на проверку и блокеры — сразу (кроме ночи).'),
-  '',
-  '/digest — ' + t('the digest now', 'сводка сейчас'),
-  '/review — ' + t('the manager reviews all projects now', 'ревизия всех проектов сейчас'),
-  '/help — ' + t('this help', 'эта справка'),
-].join('\n');
+const everyWords = (n: number) => (n === 1
+  ? t('Every hour', 'Каждый час')
+  : plural(n, [`Every ${n} hour`, `Every ${n} hours`], [`Каждый ${n} час`, `Каждые ${n} часа`, `Каждые ${n} часов`]));
 
 export function createBot(deps: BotDeps) {
-  const { db, llm, publicUrl } = deps;
+  const { db, llm } = deps;
   const tg = deps.api;
   // handlers below run only for updates, which only come when there is a bot
   const api = tg as TelegramClient;
   const now = deps.now ?? (() => new Date());
   const log = deps.log ?? ((m: string) => console.log(`[manager] ${m}`));
-  const taskUrl = (id: string) => `${publicUrl.replace(/\/$/, '')}/tasks/${id}`;
+  const base = linkBase(deps.publicUrl);
   let flushing = false;
+  /** When the last immediate notice went out (this process only: after a restart a reminder may follow one closely). */
+  let lastNoticeAt = 0;
 
   async function linkedChat(): Promise<number | null> {
     return (await getSettings(db)).telegramChatId;
   }
 
+  // ── sending ──
+  // Markup Telegram refuses (400) goes out again as plain text: one bad message must not stop the feed of notices.
+  const plain = (text: string) => esc(truncate(plainText(text), 3900));
+  const unparsed = (e: unknown) => e instanceof TelegramError && e.code === 400;
+  async function send(chatId: number, text: string, keyboard?: TgKeyboard): Promise<TgMessage> {
+    try {
+      return await api.sendMessage(chatId, text, keyboard);
+    } catch (e) {
+      if (!unparsed(e)) throw e;
+      log(`telegram refused a message (${(e as Error).message}); sending it as plain text`);
+      return api.sendMessage(chatId, plain(text), keyboard);
+    }
+  }
+  async function edit(chatId: number, messageId: number, text: string, keyboard?: TgKeyboard): Promise<void> {
+    try {
+      await api.editMessageText(chatId, messageId, text, keyboard);
+    } catch (e) {
+      if (!unparsed(e)) throw e;
+      log(`telegram refused an edit (${(e as Error).message}); sending it as plain text`);
+      await api.editMessageText(chatId, messageId, plain(text), keyboard);
+    }
+  }
+
   // ── rendering ──
+  const openButton = () => ({ text: t('🔗 Open Conus', '🔗 Открыть Conus'), url: base! });
+  const openKeyboard = (): TgKeyboard | undefined => (base ? [[openButton()]] : undefined);
+  const reminderKeyboard = (muted: boolean): TgKeyboard => [
+    ...(base ? [[openButton()]] : []),
+    [muted
+      ? { text: t('🔔 Turn reminders back on', '🔔 Включить напоминания'), callback_data: 'rm:on' }
+      : { text: t('🔕 Quiet until the next digest', '🔕 Не напоминать до сводки'), callback_data: 'rm:mute' }],
+  ];
+  const mutedNote = () => `🔕 <i>${t('No reminders until the next digest.', 'Напоминаний не будет до следующей сводки.')}</i>`;
+
+  function helpText(s: OwnerSettings): string {
+    const notices = s.notifyReview && s.notifyBlocked ? t('tasks to check and blockers', 'задачи на проверку и блокеры')
+      : s.notifyReview ? t('tasks to check', 'задачи на проверку')
+        : s.notifyBlocked ? t('blockers', 'блокеры') : '';
+    const settings = t('Conus → Settings', 'Conus → Настройки');
+    return [
+      `🤖 <b>${t('Conus manager', 'Главный агент Conus')}</b>\n${
+        t('I watch the tasks of all your projects and tell you what waits for you.', 'Слежу за задачами всех проектов и говорю, что ждёт тебя.')}`,
+      section(`<b>${t('What I do myself', 'Что делаю сам')}</b>`, [
+        `☀️ ${llm.enabled
+          ? t(`At ${s.digestTime} — a review of all projects and the digest for the day`, `В ${s.digestTime} — ревизия всех проектов и сводка на день`)
+          : t(`At ${s.digestTime} — the digest for the day`, `В ${s.digestTime} — сводка на день`)}`,
+        s.remindEveryHours > 0
+          ? `⏰ ${everyWords(s.remindEveryHours)} — ${t('a reminder, while something waits for you', 'напоминание, пока тебя что-то ждёт')}${
+            s.remindersMuted ? t(' (quiet until the next digest)', ' (выключены до следующей сводки)') : ''}`
+          : `⏰ ${t('Reminders between digests are off', 'Напоминания между сводками выключены')}`,
+        notices ? `👀 ${t('Right away', 'Сразу')} — ${notices}` : '',
+        s.quietFrom !== s.quietTo ? `🌙 ${t(`From ${s.quietFrom} to ${s.quietTo} I keep quiet`, `С ${s.quietFrom} до ${s.quietTo} не беспокою`)}` : '',
+      ].filter(Boolean)),
+      section(`<b>${t('What you can send', 'Что можно прислать')}</b>`, [
+        `✍️ ${t('Forward me a conversation with a client, a colleague or an investor, or just write what needs doing. I file it as proposals in the right projects; you accept or reject them.',
+          'Перешли переписку с заказчиком, коллегой, инвестором или просто напиши, что нужно сделать. Разложу по проектам как предложения, а ты примешь или отклонишь.')}`,
+      ]),
+      section(`<b>${t('Commands', 'Команды')}</b>`, [
+        `/now — ${t('what waits for me now', 'что ждёт меня сейчас')}`,
+        `/digest — ${t('the digest', 'сводка')}`,
+        `/review — ${t('review all projects', 'ревизия всех проектов')}`,
+        `/help — ${t('this help', 'эта справка')}`,
+      ]),
+      `<i>${t('The schedule and notifications are in', 'Расписание и уведомления —')} ${base ? link(`${base}/settings`, esc(settings)) : esc(settings)}. ${
+        t('Time zone', 'Часовой пояс')}: ${esc(s.timeZone)}.</i>`,
+    ].join('\n\n');
+  }
+
   function batchView(b: IntakeBatch, picking?: string): { text: string; keyboard: TgKeyboard } {
-    const out: string[] = [`🧠 <b>${t('Sorted the correspondence', 'Разобрал переписку')}</b>`];
-    if (b.summary) out.push(`<i>${esc(b.summary)}</i>`);
-    const keyboard: TgKeyboard = [];
-    b.tasks.forEach((x, i) => {
-      const n = i + 1;
-      const tags = [
-        x.priority !== 'normal' ? { urgent: t('🔥 urgent', '🔥 срочно'), high: t('⬆️ high', '⬆️ высокий'), low: t('⬇️ low', '⬇️ низкий') }[x.priority as 'urgent' | 'high' | 'low'] : null,
-        x.dueOn ? t(`due ${x.dueOn}`, `до ${x.dueOn}`) : null,
+    const title = `🧠 <b>${t('Sorted the correspondence', 'Разобрал переписку')}</b>`;
+    const pending = b.tasks.filter((x) => x.status === 'proposed').length;
+    const items = b.tasks.map((x, i) => {
+      const meta = [
+        taskLink(x, base), esc(truncate(x.projectName, 40)),
+        x.priority !== 'normal' ? { urgent: t('🔥 urgent', '🔥 срочно'), high: t('⬆️ high', '⬆️ высокий'), low: t('⬇️ low', '⬇️ низкий') }[x.priority as 'urgent' | 'high' | 'low'] : '',
+        x.dueOn ? esc(t(`due ${shortDate(x.dueOn)}`, `до ${shortDate(x.dueOn)}`)) : '',
+        x.status === 'proposed' ? '' : x.status === 'dropped' ? `✖️ ${t('rejected', 'отклонено')}` : `✅ ${t('accepted', 'принято')}`,
       ].filter(Boolean).join(' · ');
-      const state = x.status === 'proposed' ? '' : x.status === 'dropped' ? ` — ✖️ ${t('rejected', 'отклонено')}` : ` — ✅ ${t('accepted', 'принято')}`;
-      out.push('', `${n}. <b>${esc(x.ref)}</b>${tags ? ` · ${esc(tags)}` : ''}${state}`, `    ${esc(truncate(x.title, 150))}`);
-      if (x.status === 'proposed' && !picking) {
+      const name = esc(truncate(x.title, 150));
+      return `<b>${i + 1}.</b> ${x.status === 'dropped' ? `<s>${name}</s>` : name}\n    ${meta}`;
+    });
+    const { text, kept } = fitted([
+      b.summary ? `${title}\n${quote(esc(b.summary))}` : title,
+      ...(items.length ? items : [t('Nothing new to file.', 'Новых задач не нашёл.')]),
+      b.duplicates.length ? section(heading('♻️', t('Already on the board', 'Уже есть на доске')), b.duplicates.map((d) =>
+        `• ${esc(truncate(d.title, 80))} → <b>${esc(d.ref)}</b> ${esc(truncate(d.existingTitle, 60))}`)) : '',
+      pending && !picking ? `<i>${t('✅ accept · ✖️ reject · 📁 another project', '✅ принять · ✖️ отклонить · 📁 в другой проект')}</i>` : '',
+    ]);
+    // buttons only for the tasks the message shows (a very long batch loses its tail)
+    const shown = Math.min(items.length, Math.max(0, kept - 1));
+    const keyboard: TgKeyboard = [];
+    if (!picking) {
+      b.tasks.slice(0, shown).forEach((x, i) => {
+        if (x.status !== 'proposed') return;
         keyboard.push([
-          { text: `✅ ${n}`, callback_data: `pa:${x.id}` },
-          { text: `✖️ ${n}`, callback_data: `pr:${x.id}` },
-          { text: `📁 ${n}`, callback_data: `pm:${x.id}` },
+          { text: `✅ ${i + 1}`, callback_data: `pa:${x.id}` },
+          { text: `✖️ ${i + 1}`, callback_data: `pr:${x.id}` },
+          { text: `📁 ${i + 1}`, callback_data: `pm:${x.id}` },
+        ]);
+      });
+      if (pending > 1) {
+        keyboard.push([
+          { text: t('✅ Accept all', '✅ Принять все'), callback_data: `ba:${b.id}` },
+          { text: t('✖️ Reject all', '✖️ Отклонить все'), callback_data: `br:${b.id}` },
         ]);
       }
-    });
-    if (!b.tasks.length) out.push('', t('Nothing new to file.', 'Новых задач не нашёл.'));
-    if (b.duplicates.length) {
-      out.push('', t('Already on the board:', 'Уже есть на доске:'));
-      b.duplicates.forEach((d) => out.push(`• ${esc(truncate(d.title, 80))} → <b>${esc(d.ref)}</b> ${esc(truncate(d.existingTitle, 60))}`));
     }
-    const pending = b.tasks.filter((x) => x.status === 'proposed').length;
-    if (pending > 1 && !picking) {
-      keyboard.push([
-        { text: t('✅ Accept all', '✅ Принять все'), callback_data: `ba:${b.id}` },
-        { text: t('✖️ Reject all', '✖️ Отклонить все'), callback_data: `br:${b.id}` },
-      ]);
-    }
-    if (pending && !picking) out.push('', t('✅ accept · ✖️ reject · 📁 another project', '✅ принять · ✖️ отклонить · 📁 в другой проект'));
-    return { text: out.join('\n'), keyboard };
+    return { text, keyboard };
   }
 
   async function projectPicker(taskId: string, batchId: number): Promise<TgKeyboard> {
@@ -107,29 +176,12 @@ export function createBot(deps: BotDeps) {
     return kb;
   }
 
-  function reviewText(r: ManagerReview): string {
-    const out = [`🧭 <b>${t('Review', 'Ревизия')}</b>`, esc(r.summary)];
-    if (r.focus.length) {
-      out.push('', `🎯 <b>${t('Focus for today', 'Фокус на сегодня')}</b>`);
-      r.focus.forEach((f, i) => out.push(`${i + 1}. <b>${esc(f.ref)}</b> ${esc(truncate(f.title, 80))}\n    <i>${esc(f.why)}</i>`));
-    }
-    if (r.changes.length) {
-      out.push('', `⚖️ <b>${t('Priorities', 'Приоритеты')}</b>`);
-      r.changes.slice(0, 15).forEach((c) => out.push(`• <b>${esc(c.ref)}</b> ${c.from} → ${c.to}${c.applied ? '' : t(' (suggested)', ' (предложено)')} — ${esc(c.reason)}`));
-    }
-    if (r.findings.length) {
-      out.push('', `📝 <b>${t('Notes', 'Заметки')}</b>`);
-      r.findings.forEach((f) => out.push(`• ${esc(f.refs.join(', '))}: ${esc(f.note)}`));
-    }
-    return out.join('\n').slice(0, 4000);
-  }
-
   function noticeKeyboard(n: Notice): TgKeyboard | undefined {
     const row: TgKeyboard[number] = [];
     if (n.kind === 'review') {
       row.push({ text: t('✅ Accept', '✅ Принять'), callback_data: `rv:ok:${n.task.id}` }, { text: t('↩️ Back to work', '↩️ Вернуть'), callback_data: `rv:back:${n.task.id}` });
     }
-    if (linkable(publicUrl)) row.push({ text: t('🔗 Open', '🔗 Открыть'), url: taskUrl(n.task.id) });
+    if (base) row.push({ text: t('🔗 Open', '🔗 Открыть'), url: `${base}/tasks/${n.task.id}` });
     return row.length ? [row] : undefined;
   }
 
@@ -138,41 +190,44 @@ export function createBot(deps: BotDeps) {
     const chatId = m.chat.id;
     if (m.chat.type !== 'private') return;
     const text = (m.text ?? m.caption ?? '').trim();
-    const linked = await linkedChat();
+    const s = await getSettings(db);
+    const linked = s.telegramChatId;
     const start = /^\/start(?:@\w+)?(?:\s+(\S+))?$/.exec(text);
     if (start) {
       if (start[1] && await linkTelegramChat(db, { code: start[1], chatId, username: m.from?.username ?? null }, now())) {
-        await api.sendMessage(chatId, `✅ ${t('Linked. ', 'Привязано. ')}\n\n${helpText()}`);
+        await send(chatId, `✅ <b>${t('Linked.', 'Привязано.')}</b>\n\n${helpText(await getSettings(db))}`);
         log(`telegram linked to chat ${chatId}`);
         return;
       }
-      if (linked === chatId) { await api.sendMessage(chatId, helpText()); return; }
-      await api.sendMessage(chatId, start[1]
+      if (linked === chatId) { await send(chatId, helpText(s)); return; }
+      await send(chatId, start[1]
         ? t('That code did not work or has expired. Get a new one in Conus → Settings → Telegram.', 'Код не подошёл или устарел. Возьми новый в Conus → Настройки → Telegram.')
         : t('This is a private Conus bot. Link it in Conus → Settings → Telegram.', 'Это личный бот Conus. Привяжи его в Conus → Настройки → Telegram.'));
       return;
     }
     if (linked !== chatId) {
-      await api.sendMessage(chatId, t('This is a private Conus bot.', 'Это личный бот Conus.'));
+      await send(chatId, t('This is a private Conus bot.', 'Это личный бот Conus.'));
       return;
     }
-    if (/^\/help\b/.test(text)) { await api.sendMessage(chatId, helpText()); return; }
-    if (/^\/digest\b/.test(text)) { await api.sendMessage(chatId, await buildDigest(db, linkable(publicUrl) ? publicUrl : null, now())); return; }
+    if (/^\/help\b/.test(text)) { await send(chatId, helpText(s)); return; }
+    if (/^\/now\b/.test(text)) { await send(chatId, (await buildNow(db, base, now(), 'ask')).text, openKeyboard()); return; }
+    if (/^\/digest\b/.test(text)) { await send(chatId, await buildDigest(db, base, now()), openKeyboard()); return; }
     if (/^\/review\b/.test(text)) {
-      if (!llm.enabled) { await api.sendMessage(chatId, t('The manager needs an Anthropic API key on the server.', 'Главному агенту нужен ключ Anthropic API на сервере.')); return; }
+      if (!llm.enabled) { await send(chatId, t('The manager needs an Anthropic API key on the server.', 'Главному агенту нужен ключ Anthropic API на сервере.')); return; }
       await api.sendChatAction(chatId, 'typing').catch(() => {});
       try {
-        await api.sendMessage(chatId, reviewText(await runReview({ db, llm, now: now() }, 'owner')));
+        const messages = await renderReview(db, await runReview({ db, llm, now: now() }, 'owner'), base);
+        for (const x of messages) await send(chatId, x);
       } catch (e) {
-        await api.sendMessage(chatId, `⚠️ ${esc(e instanceof Error ? e.message : String(e))}`);
+        await send(chatId, `⚠️ ${esc(e instanceof Error ? e.message : String(e))}`);
       }
       return;
     }
     if (!text) {
-      await api.sendMessage(chatId, t('I read text only for now: forward text messages or write.', 'Пока понимаю только текст: перешли текстовые сообщения или напиши.'));
+      await send(chatId, t('I read text only for now: forward text messages or write.', 'Пока понимаю только текст: перешли текстовые сообщения или напиши.'));
       return;
     }
-    if (text.startsWith('/')) { await api.sendMessage(chatId, helpText()); return; }
+    if (text.startsWith('/')) { await send(chatId, helpText(s)); return; }
     await db.query('INSERT INTO telegram_inbox(text, author, received_at) VALUES ($1, $2, $3)',
       [truncate(text, 10_000), authorOf(m.forward_origin, m.forward_origin ? null : t('Me', 'Я')), now()]);
     await api.sendChatAction(chatId, 'typing').catch(() => {});
@@ -192,17 +247,17 @@ export function createBot(deps: BotDeps) {
       const chatId = await linkedChat();
       if (!chatId) return;
       const text = rows.map((r) => (r.author ? `${r.author}: ${r.text}` : r.text)).join('\n\n');
-      const placeholder = await api.sendMessage(chatId, `🧠 ${t('Reading…', 'Разбираю…')}`);
+      const placeholder = await send(chatId, `🧠 ${t('Reading…', 'Разбираю…')}`);
       try {
         const batch = await runIntake({ db, llm, now: now() }, { source: 'telegram', text });
         await db.query('UPDATE telegram_inbox SET batch_id = $2 WHERE id = ANY($1)', [ids, batch.id]);
         await setBatchTelegramMessage(db, batch.id, placeholder.message_id);
         const v = batchView(batch);
-        await api.editMessageText(chatId, placeholder.message_id, v.text, v.keyboard);
+        await edit(chatId, placeholder.message_id, v.text, v.keyboard);
       } catch (e) {
         const msg = e instanceof DomainError || e instanceof Error ? e.message : String(e);
-        await api.editMessageText(chatId, placeholder.message_id,
-          `⚠️ ${t('Could not sort it out', 'Не получилось разобрать')}: ${esc(msg)}\n${t('The text is kept on the server.', 'Текст сохранён на сервере.')}`);
+        await edit(chatId, placeholder.message_id,
+          `⚠️ <b>${t('Could not sort it out', 'Не получилось разобрать')}</b>\n${quote(esc(truncate(msg, 500)))}\n${t('The text is kept on the server.', 'Текст сохранён на сервере.')}`);
       }
     } finally {
       flushing = false;
@@ -220,7 +275,7 @@ export function createBot(deps: BotDeps) {
     const b = await getIntakeBatch(db, batchId);
     if (!b) return;
     const v = batchView(b);
-    await api.editMessageText(chatId, messageId, v.text, v.keyboard);
+    await edit(chatId, messageId, v.text, v.keyboard);
   }
 
   async function accept(taskId: string) {
@@ -250,11 +305,18 @@ export function createBot(deps: BotDeps) {
           const to = m[1] === 'ok' ? 'done' : 'todo';
           await ownerSetStatus(owner(db), { taskId: x.id, status: to, reason: to === 'todo' ? t('Returned from Telegram', 'Возвращено из Telegram') : null });
           answer = to === 'done' ? t('Accepted', 'Принято') : t('Back to work', 'Возвращено в работу');
-          await api.editMessageText(chatId, messageId, `${renderNotice({ eventId: 0, kind: 'review', task: x })}\n\n${to === 'done' ? '✅' : '↩️'} <b>${esc(answer)}</b>`);
+          await edit(chatId, messageId, `${renderNotice({ eventId: 0, kind: 'review', task: x }, base)}\n\n${to === 'done' ? '✅' : '↩️'} <b>${esc(answer)}</b>`);
         } else {
           answer = t('Already handled', 'Уже обработано');
-          await api.editMessageText(chatId, messageId, `${q.message?.text ? esc(q.message.text) : ''}\n\n${esc(answer)}`.trim());
+          const body = x ? renderNotice({ eventId: 0, kind: 'review', task: x }, base) : esc(q.message?.text ?? '');
+          await edit(chatId, messageId, `${body}\n\n<i>${esc(answer)}</i>`.trim());
         }
+      } else if ((m = /^rm:(mute|on)$/.exec(data))) {
+        const muted = m[1] === 'mute';
+        await db.query('UPDATE owner_settings SET reminders_muted = $1 WHERE id = 1', [muted]);
+        answer = muted ? t('Quiet until the next digest', 'Не напоминаю до следующей сводки') : t('Reminders are back on', 'Напоминания включены');
+        const v = await buildNow(db, base, now(), 'reminder');
+        await edit(chatId, messageId, muted ? `${v.text}\n\n${mutedNote()}` : v.text, reminderKeyboard(muted));
       } else if ((m = /^p([ar]):([0-9a-f-]{36})$/.exec(data))) {
         if (m[1] === 'a') { await accept(m[2]!); answer = t('Accepted', 'Принято'); } else { await reject(m[2]!); answer = t('Rejected', 'Отклонено'); }
         const b = await batchOfMessage(q.message);
@@ -264,7 +326,7 @@ export function createBot(deps: BotDeps) {
         if (b) {
           const v = batchView(b, m[1]);
           const x = b.tasks.find((y) => y.id === m![1]);
-          await api.editMessageText(chatId, messageId, `${v.text}\n\n📁 ${t('Move', 'Перенести')} <b>${esc(x?.ref ?? '')}</b> ${t('to:', 'в:')}`, await projectPicker(m[1]!, b.id));
+          await edit(chatId, messageId, `${v.text}\n\n📁 ${t('Move', 'Перенести')} <b>${esc(x?.ref ?? '')}</b> ${t('to:', 'в:')}`, await projectPicker(m[1]!, b.id));
         }
       } else if ((m = /^pt:([0-9a-f-]{36}):([A-Z0-9]{1,16})$/.exec(data))) {
         const { rows } = await db.query('SELECT id FROM projects WHERE key = $1', [m[2]]);
@@ -295,7 +357,7 @@ export function createBot(deps: BotDeps) {
     else if (u.callback_query) await onCallback(u.callback_query);
   }
 
-  // ── outgoing: notices and the digest ──
+  // ── outgoing: notices, the digest and reminders ──
   async function sendNotices() {
     const s = await getSettings(db);
     const after = await notifiedUpTo(db);
@@ -308,16 +370,18 @@ export function createBot(deps: BotDeps) {
     if (lastId === after) return;
     const wanted = notices.filter((n) => (n.kind === 'review' ? s.notifyReview : s.notifyBlocked));
     const quiet = inQuietHours(localClock(now(), s.timeZone).time, s.quietFrom, s.quietTo);
-    // Quiet hours, no chat, or nothing wanted: the feed moves on (the morning digest lists what still waits).
+    // Quiet hours, no chat, or nothing wanted: the feed moves on (the digest and the reminders list what still waits).
     if (s.telegramChatId && wanted.length && !quiet) {
       if (wanted.length > NOTICE_BURST) {
-        const lines = wanted.map((n) => `${n.kind === 'review' ? '👀' : '⛔'} <b>${esc(n.task.ref)}</b> ${esc(truncate(n.task.title, 90))}`);
-        await api.sendMessage(s.telegramChatId,
-          [`<b>${t(`${wanted.length} tasks need you`, `${wanted.length} задач ждут тебя`)}</b>`, ...lines].join('\n').slice(0, 4000),
-          linkable(publicUrl) ? [[{ text: t('🔗 Open Conus', '🔗 Открыть Conus'), url: publicUrl }]] : undefined);
+        await send(s.telegramChatId, renderNoticeBurst(wanted, base), openKeyboard());
       } else {
-        for (const n of wanted) await api.sendMessage(s.telegramChatId, renderNotice(n), noticeKeyboard(n));
+        for (const n of wanted) {
+          await send(s.telegramChatId, renderNotice(n, base), noticeKeyboard(n));
+          // sent ones are never sent again, even when a later one fails
+          await markNotified(db, n.eventId);
+        }
       }
+      lastNoticeAt = now().getTime();
     }
     await markNotified(db, lastId);
   }
@@ -327,7 +391,8 @@ export function createBot(deps: BotDeps) {
     const s = await getSettings(db);
     const clock = localClock(now(), s.timeZone);
     if (clock.time < s.digestTime || s.lastDigestOn === clock.date) return;
-    await db.query('UPDATE owner_settings SET last_digest_on = $1 WHERE id = 1', [clock.date]);
+    // the digest starts a new round of reminders, and ends «quiet until the next digest»
+    await db.query('UPDATE owner_settings SET last_digest_on = $1, last_reminder_at = $2, reminders_muted = false WHERE id = 1', [clock.date, now()]);
     if (llm.enabled && s.lastReviewOn !== clock.date) {
       try {
         const r = await runReview({ db, llm, now: now() }, 'daily');
@@ -336,8 +401,34 @@ export function createBot(deps: BotDeps) {
         log(`daily review failed: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
-    if (tg && s.telegramChatId) await tg.sendMessage(s.telegramChatId, await buildDigest(db, linkable(publicUrl) ? publicUrl : null, now()));
+    if (tg && s.telegramChatId) await send(s.telegramChatId, await buildDigest(db, base, now()), openKeyboard());
   }
 
-  return { handleUpdate, flushInbox, sendNotices, dailyRun, batchView, reviewText, latestReview: () => latestReview(db) };
+  /**
+   * Between digests, every few hours: what waits for the owner — only when something does. Not in quiet hours, not
+   * when the digest is about to come, not right after an immediate notice.
+   */
+  async function remind() {
+    if (!tg) return;
+    const s = await getSettings(db);
+    const every = s.remindEveryHours * HOUR;
+    if (!s.telegramChatId || !every || s.remindersMuted) return;
+    const at = now();
+    const stamp = () => db.query('UPDATE owner_settings SET last_reminder_at = $1 WHERE id = 1', [at]);
+    if (!s.lastReminderAt) { await stamp(); return; }
+    if (at.getTime() - s.lastReminderAt.getTime() < every) return;
+    const clock = localClock(at, s.timeZone);
+    if (inQuietHours(clock.time, s.quietFrom, s.quietTo)) return;
+    const untilDigest = minutes(s.digestTime) - minutes(clock.time);
+    if (s.lastDigestOn !== clock.date && untilDigest > 0 && untilDigest * 60_000 < every) return;
+    if (at.getTime() - lastNoticeAt < NOTICE_GAP_MS) return;
+    // stamped first: a reminder that fails to send is not retried every tick
+    await stamp();
+    const v = await buildNow(db, base, at, 'reminder');
+    if (v.empty) return;
+    await send(s.telegramChatId, v.text, reminderKeyboard(false));
+    log('reminder sent');
+  }
+
+  return { handleUpdate, flushInbox, sendNotices, dailyRun, remind, batchView, latestReview: () => latestReview(db) };
 }

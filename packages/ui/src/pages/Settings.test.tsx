@@ -10,7 +10,7 @@ afterEach(() => vi.restoreAllMocks());
 const base: SettingsDto = {
   settings: {
     timeZone: 'Europe/Moscow', digestTime: '09:00', quietFrom: '22:00', quietTo: '08:00', notifyReview: true, notifyBlocked: true,
-    managerAuto: true, telegramUsername: null, telegramLinked: false,
+    remindEveryHours: 3, managerAuto: true, telegramUsername: null, telegramLinked: false,
   },
   telegram: { configured: true, botUsername: 'pandus_conus_bot', error: null },
   manager: { enabled: true, model: 'claude-opus-5-5' },
@@ -52,6 +52,11 @@ describe('Settings', () => {
     await waitFor(() => expect(mutations(f).at(-1)).toEqual({ call: 'PATCH /api/ui/settings', body: '{"manager_auto":false}' }));
     await userEvent.selectOptions(screen.getByLabelText('Часовой пояс'), 'UTC');
     await waitFor(() => expect(mutations(f).at(-1)).toEqual({ call: 'PATCH /api/ui/settings', body: '{"time_zone":"UTC"}' }));
+    const remind = screen.getByLabelText('Напоминания между сводками') as HTMLSelectElement;
+    expect(remind.selectedOptions[0]!.textContent).toBe('Каждые 3 часа');
+    expect([...remind.options].map((o) => o.textContent).slice(0, 2)).toEqual(['Выключены', 'Каждый час']);
+    await userEvent.selectOptions(remind, '6');
+    await waitFor(() => expect(mutations(f).at(-1)).toEqual({ call: 'PATCH /api/ui/settings', body: '{"remind_every_hours":6}' }));
   });
 
   it('explains how to turn on what is off', async () => {

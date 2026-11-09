@@ -222,4 +222,15 @@ CREATE TABLE manager_reviews (
 );
 `,
   },
+  {
+    name: '0004_reminders',
+    sql: `
+-- Reminders between digests: every N hours while something waits for the owner (0 = off).
+ALTER TABLE owner_settings
+  ADD COLUMN remind_every_hours int NOT NULL DEFAULT 3 CHECK (remind_every_hours BETWEEN 0 AND 24),
+  ADD COLUMN last_reminder_at timestamptz,
+  -- "not until the next digest": the digest clears it
+  ADD COLUMN reminders_muted boolean NOT NULL DEFAULT false;
+`,
+  },
 ];

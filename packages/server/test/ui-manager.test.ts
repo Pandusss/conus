@@ -48,14 +48,17 @@ describe('manager API', () => {
     expect(r).toEqual({
       settings: {
         timeZone: 'UTC', digestTime: '09:00', quietFrom: '22:00', quietTo: '08:00', notifyReview: true, notifyBlocked: true,
-        managerAuto: true, telegramUsername: null, telegramLinked: false,
+        managerAuto: true, remindEveryHours: 3, telegramUsername: null, telegramLinked: false,
       },
       telegram: { configured: true, botUsername: 'conus_test_bot', error: null },
       manager: { enabled: true, model: 'claude-opus-5-5' },
     });
     const p = await req('/settings', 'PATCH', { time_zone: 'Asia/Almaty', digest_time: '08:15', manager_auto: false });
     expect((await p.json()).settings).toMatchObject({ timeZone: 'Asia/Almaty', digestTime: '08:15', managerAuto: false });
-    for (const bad of [{ time_zone: 'Nowhere/City' }, { digest_time: '25:00' }, { quiet_from: '7:00' }]) {
+    expect((await (await req('/settings', 'PATCH', { remind_every_hours: 6 })).json()).settings.remindEveryHours).toBe(6);
+    expect((await (await req('/settings', 'PATCH', { remind_every_hours: 0 })).json()).settings.remindEveryHours).toBe(0); // off
+    await req('/settings', 'PATCH', { remind_every_hours: 3 });
+    for (const bad of [{ time_zone: 'Nowhere/City' }, { digest_time: '25:00' }, { quiet_from: '7:00' }, { remind_every_hours: 25 }, { remind_every_hours: 1.5 }, { remind_every_hours: -1 }]) {
       expect((await req('/settings', 'PATCH', bad)).status, JSON.stringify(bad)).toBe(400);
     }
     await req('/settings', 'PATCH', { manager_auto: true });
@@ -69,6 +72,7 @@ describe('manager API', () => {
     await db.query('UPDATE owner_settings SET telegram_chat_id = 42, telegram_username = $1', ['owner']);
     expect((await req('/telegram/test', 'POST')).status).toBe(200);
     expect(sent.at(-1)!.chatId).toBe(42);
+    expect(sent.at(-1)!.text).toContain('<b>Conus is here.</b>');
     expect((await (await req('/settings')).json()).settings).toMatchObject({ telegramLinked: true, telegramUsername: 'owner' });
     expect((await (await req('/telegram/unlink', 'POST')).json()).settings.telegramLinked).toBe(false);
   });

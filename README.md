@@ -143,9 +143,14 @@ With an Anthropic API key on the server, a **manager** works on top of the agent
   bot) and it files the work as proposals in the right projects, with a priority, a date and the quote it came from.
 
 With a **Telegram bot** it reaches you: a morning digest, a message when a task waits for your check (accept or send it
-back with a button) or an agent is blocked, quiet at night. Create a bot with [@BotFather](https://t.me/BotFather), put
-its token in `CONUS_TELEGRAM_BOT_TOKEN`, restart, then press **Link Telegram** in Settings. The bot polls Telegram,
-so the server needs no public webhook, and it talks only to the chat you linked.
+back with a button) or an agent is blocked, and a reminder every few hours for as long as something still waits for
+you: checks, blockers, deadlines, proposals, the unfinished focus. Reminders are quiet at night, stop until the next
+digest with one button, and are set in Settings (every 3 hours by default, or off). `/now` shows the same list at any
+moment. Every task in a message is a link to it in the web app.
+
+Create a bot with [@BotFather](https://t.me/BotFather), put its token in `CONUS_TELEGRAM_BOT_TOKEN`, restart, then
+press **Link Telegram** in Settings. The bot polls Telegram, so the server needs no public webhook, and it talks only
+to the chat you linked.
 
 ## Configuration
 
