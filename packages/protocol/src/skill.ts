@@ -23,7 +23,8 @@ ${PROTOCOL_CORE}
 | Important defect outside the current task, not fixing now | task_create type=bug |
 | Cannot continue without credentials / a decision / another task | task_block with reason |
 | Done and verified by you (tests pass, you ran it, you saw the result) or confirmed by the user | task_complete with result — closes the task, no review |
-| Done, and one specific thing is left that only the user can check (how it looks to them, a real device, their account, a choice that is theirs), or they asked to see it | task_complete needs_review=true review_request="what to check" |
+| Done, and one specific thing is left that only the user can check (how it looks to them, a real device, an outside account the result can only be seen on, a choice that is theirs), or they asked to see it | task_complete needs_review=true review_request="what to check" |
+| Verified locally and on the server, but you have no login to open the page on production | task_complete with result, naming what you did not open — not a reason for review |
 | Not sure the work is done | it is not done: verify it, keep working, or task_block — review is not a safety net |
 | "We won't do it", "не будем", rollback | task_drop the related tasks and proposals |
 
@@ -35,6 +36,7 @@ ${PROTOCOL_CORE}
 - The flag works, the tests pass and you ran the command yourself → task_complete without needs_review. Do not ask the user to "take a look" at work you have verified.
 - You restyled the pricing page, it builds and renders, but only the user can say whether they like it → task_complete needs_review=true, review_request "Открой /pricing: устраивает ли новый вид карточек тарифов".
 - The fix needs a real iPhone you do not have → task_complete needs_review=true, review_request "Проверь на своём iPhone: клавиатура больше не перекрывает поле ввода".
+- The page works locally and the production server answers real requests, but you cannot log in to production to click through it → task_complete without needs_review; in the result: "не открывал страницу под входом на проде".
 - "Let's do the export next week" → task_create (todo), do not start.
 - "Надо бы когда-нибудь кэш переделать" → task_propose "Переделать кэш", source_quote = that sentence.
 - While implementing import you notice the date parser is broken elsewhere and you will not fix it now → task_create type=bug.

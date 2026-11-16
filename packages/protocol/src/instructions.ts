@@ -4,7 +4,7 @@ Not tasks: questions, explanations, small or one-off edits, plan steps, options 
 - Before implementing a main task: tasks_context to find it, then task_start; if none, task_create start_now=true.
 - Agreed but not started: task_create. Significant idea / "someday": task_propose with the quote.
 - Blocked: task_block with reason. Done and verified by you: task_complete with result (what, where, how verified, what is left) — it closes the task.
-- needs_review=true only when one specific thing is left that only the user can check; name it in review_request. Not a safety net: each review is manual work for the user.
+- needs_review=true only when one specific thing is left that only the user can check; name it in review_request. Not a safety net: each review is manual work for the user. No login to production is not a reason when the rest is verified: close it and say in result what you did not open.
 - User abandons work: task_drop with reason.
 - possible_duplicates: reuse a candidate (task_start / task_update) or repeat with confirm_new and a reason.
 - conflict_claimed: another session works on it; do not take it over, tell the user in one line.

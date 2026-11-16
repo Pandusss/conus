@@ -34,6 +34,13 @@ describe('protocol texts', () => {
     expect(core).toContain('Say what to check in review_request');
     expect(core).toContain('It is not a safety net');
     expect(core).toContain('Not sure the work is done → it is not done');
+    // the owner's call: no login to production is not a reason once the rest is verified
+    expect(core).toContain('Having no login to production is not a reason for a review.');
+    expect(core).toContain('close the task and name in the result what you did not open');
+    expect(core).not.toContain('production system you cannot reach');
+    expect(MCP_INSTRUCTIONS).toContain('No login to production is not a reason when the rest is verified');
+    expect(TOOL_DESCRIPTIONS.task_complete).toContain('Having no login to production is not a reason');
+    expect(SKILL_MD).toContain('not a reason for review');
     expect(MCP_INSTRUCTIONS).toContain('needs_review=true only when one specific thing is left that only the user can check; name it in review_request.');
     expect(TOOL_DESCRIPTIONS.task_complete).toContain('leave needs_review out');
     expect(TOOL_DESCRIPTIONS.task_complete).toContain('review_request must then say what to check');

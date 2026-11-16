@@ -25,11 +25,15 @@ small thing → do nothing. Unsure whether it is a task or an idea → propose.
   closes the task; the user does not look at it again. This is the normal end.
 - needs_review=true is the exception: only when one specific thing is left that
   you could not verify and only the user can — how it looks or feels to them, a
-  device, account or production system you cannot reach, a choice that is
-  theirs — or they asked to see the result. Say what to check in review_request
-  ("open X, check Y"). It is not a safety net and not politeness: every review
-  is manual work for the user. Not sure the work is done → it is not done:
-  verify it, keep working, or task_block.
+  real device or an outside account the result can only be seen on, a choice
+  that is theirs — or they asked to see the result. Say what to check in
+  review_request ("open X, check Y"). It is not a safety net and not politeness:
+  every review is manual work for the user.
+- Having no login to production is not a reason for a review. With the rest
+  verified (the interface locally, the server by real requests), close the task
+  and name in the result what you did not open.
+- Not sure the work is done → it is not done: verify it, keep working, or
+  task_block.
 - User abandons something: task_drop the related tasks/proposals with the reason.
 - Do NOT create tasks for: questions, explanations, code exploration, small or
   one-off edits, comparing options before a decision, steps of your own plan.

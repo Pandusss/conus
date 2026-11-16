@@ -195,7 +195,7 @@ export function buildMcpServer(deps: { db: Db; agent: Agent; mcpSessionId: () =>
     {
       task: z.string().min(1).max(30), result: z.string().min(1).max(10_000), commits: z.array(z.string().max(40)).max(50).optional(),
       needs_review: z.boolean().optional()
-        .describe('Leave out when you verified the work yourself: the task closes. true only when one specific thing is left that only the user can check, or they asked to see the result; review_request is then required.'),
+        .describe('Leave out when you verified the work yourself: the task closes. true only when one specific thing is left that only the user can check, or they asked to see the result; review_request is then required. Having no login to production is not a reason.'),
       review_request: z.string().max(1000).optional()
         .describe('Required with needs_review=true, not allowed without it: the one thing the user has to check and where, in a sentence or two ("Open /pricing: do the plan cards look right to you?"). Not "please review" and not a summary of the work.'),
     },

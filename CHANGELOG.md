@@ -7,7 +7,9 @@
   account the agent cannot reach, a choice that is yours). `task_complete` refuses `needs_review` unless the agent
   names that thing in `review_request`, and the request is shown on the task, the board, the overview and in the
   bot's notices, so you know what to look at. Agents get the rule from Conus itself (the session context and the
-  tool descriptions), so updating the server is enough; the plugin's `task-protocol` skill says the same.
+  tool descriptions), so updating the server is enough; the plugin's `task-protocol` skill says the same. Having no
+  login to production is not a reason for a review: with the rest verified, the agent closes the task and says in
+  the result what it did not open.
 - A review queue that piled up before that can be sorted without the web app: `admin settle-reviews` takes verdicts
   from a file (`accept` what was verified, `ask` — say what you have to look at or decide, `recheck` — back to do) and
   records them as the manager's, so the history shows who accepted what and why. `--dry-run` shows the plan first.
