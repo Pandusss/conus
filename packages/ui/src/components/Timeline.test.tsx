@@ -41,4 +41,12 @@ describe('Timeline', () => {
     expect(screen.getByText('Проверить: Открой /pricing: вид карточек')).toBeTruthy();
     expect(screen.queryByText(/Причина/)).toBeNull();
   });
+
+  it('shows what the manager asked the owner to check when it sorted the queue', () => {
+    renderPage(<Timeline events={[{
+      ...event, type: 'updated', actorKind: 'manager', changes: { reviewRequest: { from: null, to: 'Дать «да» на выкладку в main' } },
+    }]} />);
+    expect(screen.getByText('главный агент')).toBeTruthy();
+    expect(screen.getByText('Проверить: Дать «да» на выкладку в main')).toBeTruthy();
+  });
 });

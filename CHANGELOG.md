@@ -8,6 +8,9 @@
   names that thing in `review_request`, and the request is shown on the task, the board, the overview and in the
   bot's notices, so you know what to look at. Agents get the rule from Conus itself (the session context and the
   tool descriptions), so updating the server is enough; the plugin's `task-protocol` skill says the same.
+- A review queue that piled up before that can be sorted without the web app: `admin settle-reviews` takes verdicts
+  from a file (`accept` what was verified, `ask` — say what you have to look at or decide, `recheck` — back to do) and
+  records them as the manager's, so the history shows who accepted what and why. `--dry-run` shows the plan first.
 - **The manager**: with `ANTHROPIC_API_KEY` set, Conus reviews all open tasks every morning (priorities — never ones
   you set — today's focus, likely duplicates, stale and vague tasks, deadlines at risk) and turns correspondence you
   paste under Proposals or forward to the bot into proposals in the right projects, with a priority, a date and the

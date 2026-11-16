@@ -141,6 +141,44 @@ export async function managerSetPriority(
   });
 }
 
+export const REVIEW_VERDICTS = ['accept', 'ask', 'recheck'] as const;
+export type ReviewVerdict = (typeof REVIEW_VERDICTS)[number];
+
+/**
+ * The manager's verdict on a task that waits in review, when the queue is sorted for the owner. `accept` closes it:
+ * the agent verified its work and nothing is left for the owner. `ask` says what exactly the owner has to look at or
+ * decide; the task stays in review and keeps the time it has waited. `recheck` sends it back to do, with what is
+ * left to verify. The agent's result is never touched, and no notice goes out. Null when the task is no longer in
+ * review: somebody settled it meanwhile.
+ */
+export async function managerSettleReview(
+  ctx: Ctx, input: { taskId: string; verdict: ReviewVerdict; note: string },
+): Promise<MutationResult | null> {
+  if (ctx.actor.kind !== 'manager') throw new DomainError('forbidden', 'Only the manager can do this.');
+  if (!(REVIEW_VERDICTS as readonly string[]).includes(input.verdict)) throw new DomainError('validation', 'Bad verdict.', { field: 'verdict' });
+  const note = requireText(input.note, 'note', 1000);
+  return withTx(ctx.db, async (tx) => {
+    const task = assertLive(await getTaskById(tx, input.taskId, { forUpdate: true }));
+    if (task.status !== 'review') return null;
+    if (input.verdict === 'ask') {
+      if (task.reviewRequest === note) return { task, chatNote: chatNote('updated', task) };
+      // updated_at stays: it is how long the task has waited for the owner
+      await tx.query('UPDATE tasks SET review_request = $2, version = version + 1 WHERE id = $1', [task.id, note]);
+      await appendEvent(tx, { taskId: task.id, type: 'updated', actor: ctx.actor, changes: { reviewRequest: { from: task.reviewRequest, to: note } } });
+    } else {
+      const to: Status = input.verdict === 'accept' ? 'done' : 'todo';
+      await tx.query(
+        `UPDATE tasks SET status = $2::text, closed_at = CASE WHEN $2::text = 'done' THEN now() ELSE NULL END,
+           review_request = NULL, version = version + 1, updated_at = now() WHERE id = $1`,
+        [task.id, to],
+      );
+      await appendEvent(tx, { taskId: task.id, type: 'status_changed', actor: ctx.actor, reason: note, changes: { status: { from: 'review', to } } });
+    }
+    const t = (await getTaskById(tx, task.id))!;
+    return { task: t, chatNote: chatNote('updated', t) };
+  });
+}
+
 /**
  * The owner moves a task to another project (e.g. a proposal the manager filed in the wrong place). It gets the next
  * number there; the history keeps the old ref. A subtask, a parent or a task an agent is working on stays put.
