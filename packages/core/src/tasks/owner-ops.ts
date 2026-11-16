@@ -32,7 +32,7 @@ export async function ownerSetStatus(ctx: Ctx, input: { taskId: string; status: 
          claim_expires_at = CASE WHEN $2::text = 'in_progress' THEN claim_expires_at ELSE NULL END,
          block_reason = CASE WHEN $2::text = 'blocked' THEN COALESCE($4::text, block_reason) ELSE NULL END,
          blocked_by_task_id = CASE WHEN $2::text = 'blocked' THEN blocked_by_task_id ELSE NULL END,
-         version = version + 1, updated_at = now() WHERE id = $1`,
+         review_request = NULL, version = version + 1, updated_at = now() WHERE id = $1`,
       [task.id, input.status, closed, reason],
     );
     await appendEvent(tx, { taskId: task.id, type: 'status_changed', actor: ctx.actor, reason, changes: { status: { from: task.status, to: input.status } } });

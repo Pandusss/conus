@@ -115,6 +115,7 @@ describe('Board cards', () => {
       }),
       taskDto({ id: 't2', ref: 'WB-2', title: 'Стоит', status: 'blocked', blockReason: 'ждём ключи' }),
       taskDto({ id: 't3', ref: 'WB-3', title: 'Проверить', status: 'review' }),
+      taskDto({ id: 't4', ref: 'WB-4', title: 'Счёт в PDF', status: 'review', reviewRequest: 'Открой счёт: логотип на месте?' }),
     ]);
     renderPage(<Board />);
     await screen.findByText('В работе у агента');
@@ -125,6 +126,7 @@ describe('Board cards', () => {
     expect(within(c).getByText('WB')).toBeTruthy(); // project chip
     expect(within(card('Стоит')).getByText('ждём ключи')).toBeTruthy();
     expect(within(card('Проверить')).getByText('ждёт проверки')).toBeTruthy();
+    expect(within(card('Счёт в PDF')).getByText('Открой счёт: логотип на месте?')).toBeTruthy(); // what the agent asks to check
   });
 
   it('shows the 20 most recent done tasks, then all of them on request', async () => {

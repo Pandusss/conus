@@ -27,6 +27,19 @@ describe('protocol texts', () => {
     expect(mcp).toContain('No ref (e.g. no hooks) → pass project');
     expect(mcp).not.toContain('If hooks did not register your session');
   });
+  it('makes a review the exception: verified work closes, a review names what only the user can check', () => {
+    const core = PROTOCOL_CORE.replace(/\s+/g, ' ');
+    expect(core).toContain('Work done and verified by you (tests pass, you ran it, you saw the result): task_complete');
+    expect(core).toContain('needs_review=true is the exception');
+    expect(core).toContain('Say what to check in review_request');
+    expect(core).toContain('It is not a safety net');
+    expect(core).toContain('Not sure the work is done → it is not done');
+    expect(MCP_INSTRUCTIONS).toContain('needs_review=true only when one specific thing is left that only the user can check; name it in review_request.');
+    expect(TOOL_DESCRIPTIONS.task_complete).toContain('leave needs_review out');
+    expect(TOOL_DESCRIPTIONS.task_complete).toContain('review_request must then say what to check');
+    expect(SKILL_MD).toContain('task_complete needs_review=true review_request="what to check"');
+    expect(SKILL_MD).toContain('review is not a safety net');
+  });
   it('describes all eight tools with "when to call" wording', () => {
     expect(Object.keys(TOOL_DESCRIPTIONS).sort()).toEqual([
       'task_block', 'task_complete', 'task_create', 'task_drop', 'task_propose', 'task_start', 'task_update', 'tasks_context',

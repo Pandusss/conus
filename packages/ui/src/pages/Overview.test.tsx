@@ -18,7 +18,7 @@ const project = (over: Partial<ProjectOverviewDto>): ProjectOverviewDto => ({
 });
 
 const doing = taskDto({ id: 'a', ref: 'WB-1', title: 'Экспорт в CSV', status: 'in_progress', holder: { agentName: 'claude-code@mac', sessionRef: 'S-1', sessionId: 's1' } });
-const check = taskDto({ id: 'b', ref: 'WB-2', title: 'Ускорить PDF', status: 'review', updatedAt: ago(3.5) });
+const check = taskDto({ id: 'b', ref: 'WB-2', title: 'Ускорить PDF', status: 'review', updatedAt: ago(3.5), reviewRequest: 'Открой счёт: логотип на месте?' });
 const stuck = taskDto({
   id: 'c', ref: 'API-1', projectKey: 'API', projectName: 'Сервер', title: 'Выплаты через Stripe', status: 'blocked',
   blockReason: 'ждём одобрения Stripe', priority: 'urgent', dueOn: day(-2),
@@ -104,7 +104,7 @@ describe('Overview', () => {
 
     const web = row('Web');
     expect(within(web).getByRole('link', { name: 'Ускорить PDF' }).getAttribute('href')).toBe('/tasks/b');
-    expect(web.textContent).toContain('Ускорить PDF · ждёт 3 ч');
+    expect(web.textContent).toContain('Ускорить PDF · ждёт 3 ч — Открой счёт: логотип на месте?');
     expect(within(web).getByText('На проверке: 1')).toBeTruthy();
     expect(within(web).getByText('сейчас')).toBeTruthy();
     expect(web.textContent).toContain('В очереди: 1');
@@ -140,6 +140,8 @@ describe('Overview', () => {
     // a task opens in the drawer over the overview
     expect(within(web).getAllByRole('link', { name: 'Ускорить PDF' }).map((a) => a.getAttribute('href'))).toEqual(['/tasks/b', '/tasks/b']);
     expect(within(web).getByRole('link', { name: 'Экспорт в CSV' }).getAttribute('href')).toBe('/tasks/a');
+    // what exactly to check sits under the task that waits for it
+    expect(within(web).getByText('Открой счёт: логотип на месте?').className).toBe('ov-task-note is-review');
     expect(within(web).getByText('Срок сегодня')).toBeTruthy();
     expect(within(web).getByText('1 агент работает')).toBeTruthy();
     expect(within(web).getByRole('link', { name: 'claude-code@mac · S-1' }).getAttribute('href')).toBe('/sessions/s1');

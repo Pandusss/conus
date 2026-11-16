@@ -244,6 +244,8 @@ kbd {
 .panel-success h3 { color: var(--success); }
 .panel-danger { background: var(--danger-soft); border-color: var(--danger-border); }
 .panel-danger h3 { color: var(--danger); }
+.panel-warn { background: var(--warn-soft); border-color: var(--warn-border); }
+.panel-warn h3 { color: var(--warn); }
 .panel-accent { background: var(--accent-soft); border-color: var(--accent-border); }
 .row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .empty {
@@ -520,6 +522,7 @@ a.ov-chip:hover { border-color: var(--st, var(--border-strong)); text-decoration
   display: -webkit-box; margin: 2px 0 0; overflow: hidden; color: var(--danger); font-size: 12.5px; line-height: 1.4;
   -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
 }
+.ov-task-note.is-review { color: var(--st-review-text); }
 .ov-block-more { margin: 5px 0 0; font-size: 12px; }
 .ov-nothing { margin: 0; font-size: 13px; }
 .ov-details-foot {

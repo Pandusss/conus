@@ -29,6 +29,8 @@ export interface HolderDto { agentName: string; sessionRef: string; sessionId: s
 export interface TaskDto {
   id: string; ref: string; projectKey: string; projectName: string; title: string; description: string; status: Status; type: 'task' | 'bug';
   parentId: string | null; parentRef: string | null; result: string | null; blockReason: string | null; sourceQuote: string | null;
+  /** In review: the one thing the agent asks the owner to check. Null when the system or the owner sent it there. */
+  reviewRequest: string | null;
   claimedBySessionId: string | null; holder: HolderDto | null; subtaskCount: number; commitCount: number;
   /** Who set the priority last; 'owner' means the manager will not change it. */
   priority: Priority; prioritySource: 'default' | 'agent' | 'manager' | 'owner'; /** 'YYYY-MM-DD' */ dueOn: string | null;

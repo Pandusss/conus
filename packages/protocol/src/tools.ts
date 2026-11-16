@@ -9,6 +9,6 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
   task_start: 'Call before you start implementing an existing task (also a proposal the user just agreed to). Claims it for this session. Fails with conflict_claimed if another active session holds it.',
   task_update: 'Call to add a progress note, to change title/description (expected_version required), to promote a proposal after the user agreed (promote=true), or to reopen a closed task (reopen.reason).',
   task_block: 'Call when work on a task cannot continue without something external (credentials, a decision, another task). Reason is required.',
-  task_complete: 'Call after a task is done and verified. result: what was done, where, how it was verified, what is left. needs_review=true if the user must check it.',
+  task_complete: 'Call after a task is done and verified. result: what was done, where, how it was verified, what is left. Verified by you (tests pass, you ran it): leave needs_review out — the task closes and the user does not look at it again. needs_review=true only when one specific thing is left that only the user can check (how it looks to them, a device or account you cannot reach, a choice that is theirs) or they asked to see the result; review_request must then say what to check. It is not a safety net: every review is manual work for the user.',
   task_drop: 'Call when the user abandons a task or proposal ("we will not do X"). Reason is required.',
 };

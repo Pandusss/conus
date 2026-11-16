@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Fewer manual checks**: an agent that verified its own work now just closes the task. Asking for your review is
+  the exception — when one specific thing is left that only you can check (how it looks to you, a device or an
+  account the agent cannot reach, a choice that is yours). `task_complete` refuses `needs_review` unless the agent
+  names that thing in `review_request`, and the request is shown on the task, the board, the overview and in the
+  bot's notices, so you know what to look at. Agents get the rule from Conus itself (the session context and the
+  tool descriptions), so updating the server is enough; the plugin's `task-protocol` skill says the same.
 - **The manager**: with `ANTHROPIC_API_KEY` set, Conus reviews all open tasks every morning (priorities — never ones
   you set — today's focus, likely duplicates, stale and vague tasks, deadlines at risk) and turns correspondence you
   paste under Proposals or forward to the bot into proposals in the right projects, with a priority, a date and the

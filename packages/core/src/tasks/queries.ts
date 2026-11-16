@@ -26,6 +26,8 @@ export function mapTask(r: any): Task {
     parentRef: r.parent_number != null ? formatRef(r.parent_key, r.parent_number) : null,
     type: r.type, title: r.title, description: r.description, status: r.status,
     result: r.result, blockReason: r.block_reason,
+    // It belongs to this stay in review only; every status change clears it, and this keeps a stale one from showing.
+    reviewRequest: r.status === 'review' ? (r.review_request ?? null) : null,
     blockedByRef: r.blocked_by_number != null ? formatRef(r.blocked_by_key, r.blocked_by_number) : null,
     sourceQuote: r.source_quote, claimedBySessionId: r.claimed_by_session_id, claimExpiresAt: r.claim_expires_at,
     mergedIntoId: r.merged_into_task_id, priority: r.priority, prioritySource: r.priority_source, dueOn: r.due_on, version: r.version,

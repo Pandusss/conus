@@ -200,7 +200,7 @@ describe('evaluateStop', () => {
     const a = await createTask({ db, actor: s.actor }, { projectId: s.project.id, title: 'Фича на проверку', startNow: true });
     if (a.outcome !== 'created') throw new Error();
     let session = await newTurn(s.session.id);
-    await completeTask({ db, actor: s.actor }, { projectId: s.project.id, task: a.task.ref, result: 'Готово, проверь.', needsReview: true });
+    await completeTask({ db, actor: s.actor }, { projectId: s.project.id, task: a.task.ref, result: 'Готово, проверь.', needsReview: true, reviewRequest: 'Open the page and look' });
     await recordFacts(db, session.id, [{ kind: 'task_op', data: { tool: 'task_complete', task: a.task.ref } }]);
     session = await newTurn(session.id);
     await recordFacts(db, session.id, [commit('cccc001')]);

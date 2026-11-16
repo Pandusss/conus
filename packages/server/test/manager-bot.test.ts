@@ -98,7 +98,7 @@ async function project(remote: string) {
   const toCheck = async (title: string, result = 'Done.') => {
     const x = await mk(title);
     await startTask(ctx, { projectId: s.project.id, task: x.ref });
-    await completeTask(ctx, { projectId: s.project.id, task: x.ref, result, needsReview: true });
+    await completeTask(ctx, { projectId: s.project.id, task: x.ref, result, needsReview: true, reviewRequest: 'Open the page and look' });
     return x;
   };
   const stuck = async (title: string, reason: string) => {
@@ -214,13 +214,14 @@ describe('the bot', () => {
     const r = await createTask(ctx, { projectId: s.project.id, title: 'Ship the invoice PDF' });
     if (r.outcome !== 'created') throw new Error();
     await startTask(ctx, { projectId: s.project.id, task: r.task.ref });
-    await completeTask(ctx, { projectId: s.project.id, task: r.task.ref, result: 'PDF attached to invoices.', needsReview: true });
+    await completeTask(ctx, { projectId: s.project.id, task: r.task.ref, result: 'PDF attached to invoices.', needsReview: true, reviewRequest: 'Open an invoice: is the logo where you want it?' });
     const before = tg.sent.length;
     await bot().sendNotices();
     const notice = tg.sent[before]!;
     expect(notice.text).toBe([
       '👀 <b>To check: Ship the invoice PDF</b>',
       `<a href="${OPEN}/tasks/${r.task.id}">${r.task.ref}</a> · bot-notice`,
+      '<b>What to check:</b> Open an invoice: is the logo where you want it?',
       '<blockquote>PDF attached to invoices.</blockquote>',
     ].join('\n'));
     expect(callbacks(notice.keyboard)).toEqual([`rv:ok:${r.task.id}`, `rv:back:${r.task.id}`, `https://conus.example.com/tasks/${r.task.id}`]);

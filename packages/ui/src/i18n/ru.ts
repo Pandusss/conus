@@ -318,6 +318,8 @@ export const ru: Messages = {
     moveNote: 'Задача получит следующий номер в том проекте; в истории останется старый.',
     moved: (ref) => `Перенесено: ${ref}`,
     result: 'Итог',
+    reviewRequest: 'Что проверить',
+    reviewLine: (what) => `Проверить: ${what}`,
     blocker: 'Блокировка',
     source: 'Источник',
     subtasks: 'Подзадачи',

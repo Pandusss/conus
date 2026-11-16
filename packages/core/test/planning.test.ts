@@ -109,7 +109,7 @@ describe('overview', () => {
     await blockTask(a.ctx, { projectId: a.project.id, task: stuck.ref, reason: 'needs API keys' });
     const check = await a.mk('Alpha check me');
     await startTask(a.ctx, { projectId: a.project.id, task: check.ref });
-    await completeTask(a.ctx, { projectId: a.project.id, task: check.ref, result: 'done, please look', needsReview: true });
+    await completeTask(a.ctx, { projectId: a.project.id, task: check.ref, result: 'done, please look', needsReview: true, reviewRequest: 'Open the page and look' });
     const shipped = await a.mk('Alpha shipped');
     await startTask(a.ctx, { projectId: a.project.id, task: shipped.ref });
     await completeTask(a.ctx, { projectId: a.project.id, task: shipped.ref, result: 'shipped' });
@@ -157,7 +157,7 @@ describe('overview', () => {
     const send = async (title: string) => {
       const x = await a.mk(title);
       await startTask(a.ctx, { projectId: a.project.id, task: x.ref });
-      await completeTask(a.ctx, { projectId: a.project.id, task: x.ref, result: 'look', needsReview: true });
+      await completeTask(a.ctx, { projectId: a.project.id, task: x.ref, result: 'look', needsReview: true, reviewRequest: 'Open the page and look' });
       return x;
     };
     const old = await send('Waits longest');

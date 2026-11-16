@@ -10,11 +10,11 @@ import { z } from 'zod';
 
 export function taskView(t: Task): {
   ref: string; title: string; status: Status; type: TaskType; parent: string | null; version: number; claimed: boolean;
-  result: string | null; block_reason: string | null; source_quote: string | null;
+  result: string | null; block_reason: string | null; review_request: string | null; source_quote: string | null;
 } {
   return {
     ref: t.ref, title: t.title, status: t.status, type: t.type, parent: t.parentRef, version: t.version,
-    claimed: !!t.claimedBySessionId, result: t.result, block_reason: t.blockReason, source_quote: t.sourceQuote,
+    claimed: !!t.claimedBySessionId, result: t.result, block_reason: t.blockReason, review_request: t.reviewRequest, source_quote: t.sourceQuote,
   };
 }
 
@@ -190,10 +190,18 @@ export function buildMcpServer(deps: { db: Db; agent: Agent; mcpSessionId: () =>
     (a, projectId, ctx) => blockTask(ctx, { projectId, task: a.task, reason: a.reason, blockedBy: a.blocked_by }),
   );
 
-  mutating<Common & { task: string; result: string; commits?: string[]; needs_review?: boolean }>(
+  mutating<Common & { task: string; result: string; commits?: string[]; needs_review?: boolean; review_request?: string }>(
     'task_complete',
-    { task: z.string().min(1).max(30), result: z.string().min(1).max(10_000), commits: z.array(z.string().max(40)).max(50).optional(), needs_review: z.boolean().optional() },
-    (a, projectId, ctx) => completeTask(ctx, { projectId, task: a.task, result: a.result, commits: a.commits, needsReview: a.needs_review }),
+    {
+      task: z.string().min(1).max(30), result: z.string().min(1).max(10_000), commits: z.array(z.string().max(40)).max(50).optional(),
+      needs_review: z.boolean().optional()
+        .describe('Leave out when you verified the work yourself: the task closes. true only when one specific thing is left that only the user can check, or they asked to see the result; review_request is then required.'),
+      review_request: z.string().max(1000).optional()
+        .describe('Required with needs_review=true, not allowed without it: the one thing the user has to check and where, in a sentence or two ("Open /pricing: do the plan cards look right to you?"). Not "please review" and not a summary of the work.'),
+    },
+    (a, projectId, ctx) => completeTask(ctx, {
+      projectId, task: a.task, result: a.result, commits: a.commits, needsReview: a.needs_review, reviewRequest: a.review_request,
+    }),
   );
 
   mutating<Common & { task: string; reason: string }>(

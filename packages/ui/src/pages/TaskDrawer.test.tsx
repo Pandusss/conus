@@ -57,6 +57,17 @@ describe('TaskDrawer', () => {
     expect(statusButton().textContent).toContain('В работе');
   });
 
+  it('shows what the agent asks to check, above its result', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => json({
+      ...detail, task: { ...task, status: 'review', result: 'Карточки тарифов переделаны.', reviewRequest: 'Открой /pricing: устраивает ли вид карточек' },
+    }));
+    mount();
+    const ask = await screen.findByRole('heading', { name: 'Что проверить' });
+    expect(ask.parentElement!.textContent).toContain('Открой /pricing: устраивает ли вид карточек');
+    const result = screen.getByRole('heading', { name: 'Итог' });
+    expect(ask.compareDocumentPosition(result) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('closes on Esc and goes back to the board', async () => {
     mockServer();
     mount();

@@ -6,6 +6,7 @@ import { endSession, touchSession } from '../src/sessions';
 import { createTask, proposeTask } from '../src/tasks/create';
 import { blockTask, completeTask, dropTask, janitorRelease, linkCommit, startTask, updateTask } from '../src/tasks/lifecycle';
 import { getTaskById, getTaskDetail } from '../src/tasks/queries';
+import { ownerSetStatus } from '../src/tasks/owner-ops';
 import type { Ctx, Task } from '../src/types';
 
 let db: Db; let drop: () => Promise<void>;
@@ -47,10 +48,47 @@ describe('lifecycle', () => {
     expect(d?.events.map((e) => e.type)).toEqual(['created', 'started', 'blocked', 'started', 'completed']);
   });
 
+  it('a review has to say what the owner must check; verified work just closes', async () => {
+    const { ctx, project, mk } = await setup('git@github.com:me/l2r.git');
+    const t = await mk('Restyle the pricing page');
+    // "please take a look" with nothing to look at is refused, and the task stays where it was
+    await expect(completeTask(ctx, { projectId: project.id, task: t.ref, result: 'done', needsReview: true }))
+      .rejects.toMatchObject({ code: 'validation', details: { field: 'review_request' }, message: expect.stringContaining('complete without needs_review') });
+    await expect(completeTask(ctx, { projectId: project.id, task: t.ref, result: 'done', needsReview: true, reviewRequest: '   ' }))
+      .rejects.toMatchObject({ code: 'validation', details: { field: 'review_request' } });
+    // a request without a review is ambiguous: refused too
+    await expect(completeTask(ctx, { projectId: project.id, task: t.ref, result: 'done', reviewRequest: 'look at the cards' }))
+      .rejects.toMatchObject({ code: 'validation', details: { field: 'review_request' } });
+    expect((await getTaskById(db, t.id))!.status).toBe('todo');
+
+    const r = await completeTask(ctx, { projectId: project.id, task: t.ref, result: 'Cards restyled.', needsReview: true, reviewRequest: ' Open /pricing: do the cards look right? ' });
+    expect(r.task).toMatchObject({ status: 'review', reviewRequest: 'Open /pricing: do the cards look right?' });
+    const sent = (await getTaskDetail(db, t.id))!.events.at(-1)!;
+    expect(sent).toMatchObject({ type: 'sent_to_review', reason: 'Open /pricing: do the cards look right?', note: 'Cards restyled.' });
+
+    // the request belongs to that stay in review: taking the task back or closing it clears it
+    const again = await startTask(ctx, { projectId: project.id, task: t.ref });
+    expect(again.task).toMatchObject({ status: 'in_progress', reviewRequest: null });
+    const done = await completeTask(ctx, { projectId: project.id, task: t.ref, result: 'Cards restyled, checked in the browser.' });
+    expect(done.task).toMatchObject({ status: 'done', reviewRequest: null });
+    expect((await db.query('SELECT review_request FROM tasks WHERE id = $1', [t.id])).rows[0].review_request).toBeNull();
+  });
+
+  it('the owner’s verdict on a review clears what was asked', async () => {
+    const { ctx, project, mk } = await setup('git@github.com:me/l2o.git');
+    const t = await mk('Invoice PDF');
+    await completeTask(ctx, { projectId: project.id, task: t.ref, result: 'PDF renders.', needsReview: true, reviewRequest: 'Is the logo where you want it?' });
+    const back = await ownerSetStatus({ db, actor: { kind: 'user' } }, { taskId: t.id, status: 'todo', reason: 'logo is too small' });
+    expect(back.task).toMatchObject({ status: 'todo', reviewRequest: null });
+    // dragged to review by hand: there is no request, and the old one does not come back
+    const byHand = await ownerSetStatus({ db, actor: { kind: 'user' } }, { taskId: t.id, status: 'review' });
+    expect(byHand.task).toMatchObject({ status: 'review', reviewRequest: null });
+  });
+
   it('needs_review goes to review; drop requires reason; invalid transitions are reported', async () => {
     const { ctx, project, mk } = await setup('git@github.com:me/l2.git');
     const t = await mk('Feature A');
-    const r = await completeTask(ctx, { projectId: project.id, task: t.ref, result: 'check UI', needsReview: true });
+    const r = await completeTask(ctx, { projectId: project.id, task: t.ref, result: 'check UI', needsReview: true, reviewRequest: 'Open the page and look' });
     expect(r.task.status).toBe('review');
     expect(r.chatNote).toBe(`${t.ref} → review`);
     await expect(dropTask(ctx, { projectId: project.id, task: t.ref, reason: '' })).rejects.toMatchObject({ code: 'validation' });

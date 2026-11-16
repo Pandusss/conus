@@ -233,4 +233,12 @@ ALTER TABLE owner_settings
   ADD COLUMN reminders_muted boolean NOT NULL DEFAULT false;
 `,
   },
+  {
+    name: '0005_review_request',
+    sql: `
+-- What exactly the owner has to check on a task in review: the one thing the agent could not verify itself.
+-- Agents must name it to ask for a review at all; a task sent to review by the system or the owner has none.
+ALTER TABLE tasks ADD COLUMN review_request text;
+`,
+  },
 ];

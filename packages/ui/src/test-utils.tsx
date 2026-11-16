@@ -40,7 +40,7 @@ export function mutations(f: { mock: { calls: unknown[][] } }) {
 export function taskDto(over: Partial<TaskDto> = {}): TaskDto {
   return {
     id: 't1', ref: 'WB-1', projectKey: 'WB', projectName: 'Web', title: 'Задача', description: '', status: 'todo', type: 'task',
-    parentId: null, parentRef: null, result: null, blockReason: null, sourceQuote: null, claimedBySessionId: null, holder: null,
+    parentId: null, parentRef: null, result: null, blockReason: null, reviewRequest: null, sourceQuote: null, claimedBySessionId: null, holder: null,
     subtaskCount: 0, commitCount: 0, priority: 'normal', prioritySource: 'default', dueOn: null,
     version: 1, createdAt: '2026-10-08T10:00:00Z', updatedAt: '2026-10-08T10:00:00Z', ...over,
   };

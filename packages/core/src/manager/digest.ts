@@ -24,13 +24,16 @@ const listed = <T>(head: string, all: T[], total: number, line: (x: T) => string
   section(head, all.slice(0, max).map(line), total - Math.min(all.length, max));
 const blockedItem = (x: Listed & { blockReason: string | null }, base: string | null) =>
   item(x, base) + (x.blockReason ? `\n${under(truncate(x.blockReason, 140))}` : '');
+/** A task to check, with what exactly the agent asks to look at under it. */
+const reviewItem = (x: Listed & { reviewRequest: string | null }, base: string | null, note?: string | null) =>
+  item(x, base, note) + (x.reviewRequest ? `\n${under(truncate(x.reviewRequest, 140))}` : '');
 
 /** The overview lists at most twenty tasks for the owner; the projects' counters say how many there really are. */
 const count = (o: Overview, s: OpenStatus) => o.projects.reduce((n, p) => n + p.counts[s], 0);
 
 const reviewSection = (o: Overview, base: string | null, now: Date) => {
   const n = count(o, 'review');
-  return n ? listed(heading('👀', t('To check', 'Проверить'), n), o.attention.review, n, (x) => item(x, base, waitedWords(x.updatedAt, now))) : '';
+  return n ? listed(heading('👀', t('To check', 'Проверить'), n), o.attention.review, n, (x) => reviewItem(x, base, waitedWords(x.updatedAt, now))) : '';
 };
 const blockedSection = (o: Overview, base: string | null) => {
   const n = count(o, 'blocked');
@@ -209,9 +212,11 @@ export function renderNotice(n: Notice, base: string | null = null): string {
   const x = n.task;
   const what = n.kind === 'review' ? t('To check', 'Проверь') : t('Blocked', 'Заблокировано');
   const body = n.kind === 'review' ? x.result : x.blockReason;
+  const ask = n.kind === 'review' ? x.reviewRequest : null;
   return [
     `${n.kind === 'review' ? '👀' : '⛔'} <b>${esc(`${what}: ${truncate(x.title, 160)}`)}</b>`,
     [taskLink(x, base), esc(x.projectName), x.holder ? esc(x.holder.agentName) : ''].filter(Boolean).join(' · '),
+    ...(ask ? [`<b>${esc(t('What to check', 'Что проверить'))}:</b> ${esc(truncate(ask, 500))}`] : []),
     ...(body ? [quote(esc(truncate(body, n.kind === 'review' ? 900 : 500)))] : []),
   ].join('\n');
 }
@@ -223,7 +228,7 @@ export function renderNoticeBurst(notices: Notice[], base: string | null = null)
   const blocked = of('blocked');
   return fit([
     `🔔 <b>${esc(tasksWait(notices.length))}</b>`,
-    review.length ? listed(heading('👀', t('To check', 'Проверить'), review.length), review, review.length, (x) => item(x, base), 10) : '',
+    review.length ? listed(heading('👀', t('To check', 'Проверить'), review.length), review, review.length, (x) => reviewItem(x, base), 10) : '',
     blocked.length ? listed(heading('⛔', t('Blocked', 'Заблокировано'), blocked.length), blocked, blocked.length, (x) => blockedItem(x, base), 10) : '',
   ]);
 }

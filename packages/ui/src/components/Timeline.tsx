@@ -79,7 +79,7 @@ export function Timeline({ events }: { events: EventDto[] }) {
                 <Change label={t.priority.label} from={<PriorityOrDash value={e.changes.priority.from} />} to={<PriorityOrDash value={e.changes.priority.to} />} />
               )}
               {e.changes?.due && <Change label={t.due.label} from={<DayOrDash value={e.changes.due.from} />} to={<DayOrDash value={e.changes.due.to} />} />}
-              {e.reason && <p className="tl-reason">{t.common.reasonLine(e.reason)}</p>}
+              {e.reason && <p className="tl-reason">{e.type === 'sent_to_review' ? t.task.reviewLine(e.reason) : t.common.reasonLine(e.reason)}</p>}
               {e.note && <p className="tl-note">{e.note}</p>}
             </div>
           </li>

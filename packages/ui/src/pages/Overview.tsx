@@ -211,7 +211,7 @@ function NowLine({ row }: { row: Row }) {
   if (row.group === 'waiting') {
     const [b] = p.blocked; const [r] = p.review; const [d] = row.overdue;
     if (b) return <><Ban size={14} aria-hidden className="ov-now-icon st-blocked" />{title(b)}{b.blockReason && <span className="ov-now-note">{` — ${b.blockReason}`}</span>}</>;
-    if (r) return <><Eye size={14} aria-hidden className="ov-now-icon st-review" />{title(r)}<span className="ov-now-note">{` · ${waited(r.updatedAt, t)}`}</span></>;
+    if (r) return <><Eye size={14} aria-hidden className="ov-now-icon st-review" />{title(r)}<span className="ov-now-note">{` · ${waited(r.updatedAt, t)}`}{r.reviewRequest ? ` — ${r.reviewRequest}` : ''}</span></>;
     if (d) return <><AlarmClock size={14} aria-hidden className="ov-now-icon is-danger" />{title(d)}<span className="ov-now-note">{` · ${dueLabel(d.dueOn!, t)}`}</span></>;
   }
   if (row.group === 'working') {
@@ -252,7 +252,7 @@ function ProjectDetails({ id, row, onBoard }: { id: string; row: Row; onBoard: (
       {any ? (
         <div className="ov-blocks">
           <Block title={t.overview.review} total={p.counts.review} tasks={p.review} tone="st-review"
-            aside={(x) => waited(x.updatedAt, t)} />
+            aside={(x) => waited(x.updatedAt, t)} note={(x) => x.reviewRequest} noteTone="is-review" />
           <Block title={t.overview.blocked} total={p.counts.blocked} tasks={p.blocked} tone="st-blocked"
             note={(x) => x.blockReason} />
           <Block title={t.overview.dated} total={dated.length} tasks={dated} />
@@ -279,9 +279,11 @@ function ProjectDetails({ id, row, onBoard }: { id: string; row: Row; onBoard: (
   );
 }
 
-function Block({ title, total, tasks, tone, lead, aside, note }: {
+function Block({ title, total, tasks, tone, lead, aside, note, noteTone }: {
   title: string; total: number; tasks: OverviewTaskDto[]; tone?: string;
   lead?: (x: OverviewTaskDto) => ReactNode; aside?: (x: OverviewTaskDto) => ReactNode; note?: (x: OverviewTaskDto) => string | null | undefined;
+  /** The note is red (why it is blocked) unless told otherwise. */
+  noteTone?: string;
 }) {
   const { t } = useT();
   if (!tasks.length) return null;
@@ -301,7 +303,7 @@ function Block({ title, total, tasks, tone, lead, aside, note }: {
                 {x.dueOn && <DueChip dueOn={x.dueOn} />}
                 {more && <span className="ov-task-aside">{more}</span>}
               </div>
-              {why && <p className="ov-task-note" title={why}>{why}</p>}
+              {why && <p className={`ov-task-note${noteTone ? ` ${noteTone}` : ''}`} title={why}>{why}</p>}
             </li>
           );
         })}

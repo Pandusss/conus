@@ -68,7 +68,7 @@ export async function startTask(ctx: Ctx, input: { projectId: string; task: stri
     assertTransition('start', task.status, task.ref);
     await tx.query(
       `UPDATE tasks SET status = 'in_progress', claimed_by_session_id = $2, claim_expires_at = $3,
-         block_reason = NULL, blocked_by_task_id = NULL, version = version + 1, updated_at = now() WHERE id = $1`,
+         block_reason = NULL, blocked_by_task_id = NULL, review_request = NULL, version = version + 1, updated_at = now() WHERE id = $1`,
       [task.id, sid, expires],
     );
     await appendEvent(tx, {
@@ -135,24 +135,44 @@ async function insertCommitLink(
   return (r.rowCount ?? 0) > 0;
 }
 
+/**
+ * Closes a task. Verified work is `done`. A review is the exception and has to say what the owner must check
+ * (`reviewRequest`): without it agents ask for a look at everything, and the owner checks every task by hand.
+ */
 export async function completeTask(
-  ctx: Ctx, input: { projectId: string; task: string; result: string; commits?: string[]; needsReview?: boolean },
+  ctx: Ctx, input: { projectId: string; task: string; result: string; commits?: string[]; needsReview?: boolean; reviewRequest?: string | null },
 ): Promise<MutationResult> {
   const result = requireText(input.result, 'result', 10_000);
+  const request = optionalText(input.reviewRequest, 'review_request', 1000);
+  if (input.needsReview && !request) {
+    throw new DomainError(
+      'validation',
+      'needs_review=true needs review_request: the one specific thing the user has to check that you could not verify yourself ("open X, check Y"). '
+        + 'If you verified the work and nothing like that is left, complete without needs_review — the task closes. Not sure it works: it is not done yet.',
+      { field: 'review_request' },
+    );
+  }
+  if (!input.needsReview && request) {
+    throw new DomainError(
+      'validation',
+      'review_request goes only with needs_review=true. If the work is verified, leave both out and put any remark into result.',
+      { field: 'review_request' },
+    );
+  }
   return idempotent(ctx, 'complete', async (tx) => {
     const task = await getTaskByRef(tx, input.projectId, input.task, { forUpdate: true });
     assertTransition('complete', task.status, task.ref);
     const to: Status = input.needsReview ? 'review' : 'done';
     await tx.query(
-      `UPDATE tasks SET status = $2::text, result = $3, closed_at = CASE WHEN $2::text = 'done' THEN now() ELSE NULL END,
+      `UPDATE tasks SET status = $2::text, result = $3, review_request = $4, closed_at = CASE WHEN $2::text = 'done' THEN now() ELSE NULL END,
          claimed_by_session_id = NULL, claim_expires_at = NULL, version = version + 1, updated_at = now() WHERE id = $1`,
-      [task.id, to, result],
+      [task.id, to, result, request],
     );
     for (const sha of input.commits ?? []) {
       if (/^[0-9a-f]{4,40}$/i.test(sha)) await insertCommitLink(tx, task.id, sha, '', sessionOf(ctx));
     }
     await appendEvent(tx, {
-      taskId: task.id, type: to === 'done' ? 'completed' : 'sent_to_review', actor: ctx.actor, note: result,
+      taskId: task.id, type: to === 'done' ? 'completed' : 'sent_to_review', actor: ctx.actor, note: result, reason: request,
       idempotencyKey: ctx.idempotencyKey, changes: { status: { from: task.status, to } },
     });
     const t = await fresh(tx, task.id);
@@ -167,7 +187,7 @@ export async function dropTask(ctx: Ctx, input: { projectId: string; task: strin
     assertTransition('drop', task.status, task.ref);
     await tx.query(
       `UPDATE tasks SET status = 'dropped', closed_at = now(), claimed_by_session_id = NULL, claim_expires_at = NULL,
-         version = version + 1, updated_at = now() WHERE id = $1`,
+         review_request = NULL, version = version + 1, updated_at = now() WHERE id = $1`,
       [task.id],
     );
     await appendEvent(tx, {
@@ -254,7 +274,7 @@ export async function janitorRelease(
     const fromRef = await sessionRefOf(tx, task.claimedBySessionId);
     await tx.query(
       `UPDATE tasks SET status = $2::text, result = CASE WHEN $3::text IS NULL THEN result ELSE $3::text END,
-         claimed_by_session_id = NULL, claim_expires_at = NULL, version = version + 1, updated_at = now() WHERE id = $1`,
+         claimed_by_session_id = NULL, claim_expires_at = NULL, review_request = NULL, version = version + 1, updated_at = now() WHERE id = $1`,
       [task.id, input.to, input.to === 'review' ? (input.autoSummary ?? null) : null],
     );
     await appendEvent(tx, {

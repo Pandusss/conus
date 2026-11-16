@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Ban, ChevronDown, CircleCheck, Ellipsis, FolderInput, GitCommitHorizontal, GitMerge, Pencil, Quote, Trash2, X } from 'lucide-react';
+import { Ban, ChevronDown, CircleCheck, Ellipsis, Eye, FolderInput, GitCommitHorizontal, GitMerge, Pencil, Quote, Trash2, X } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, HttpError, type ProjectDto, type Status, type TaskDto } from '../api';
 import { Avatar } from '../components/Avatar';
@@ -207,6 +207,12 @@ export function TaskDetail({ id, onClose }: { id: string; onClose: () => void })
           <div><dt>{t.task.updated}</dt><dd title={formatTime(task.updatedAt, t)}>{formatTime(task.updatedAt, t)} <span className="muted">· {relativeTime(task.updatedAt, t)}</span></dd></div>
         </dl>
 
+        {task.reviewRequest && (
+          <section className="panel panel-warn">
+            <h3><Eye size={16} aria-hidden />{t.task.reviewRequest}</h3>
+            <p className="pre">{task.reviewRequest}</p>
+          </section>
+        )}
         {task.result && (
           <section className="panel panel-success">
             <h3><CircleCheck size={16} aria-hidden />{t.task.result}</h3>

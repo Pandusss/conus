@@ -213,7 +213,7 @@ function TaskCard({ task, showProject, dragging, onMove, onPlan, onDragStart, on
       </div>
       <Link to={`/board/tasks/${task.id}`} className="task-card-title" draggable={false}>{task.title}</Link>
       {task.status === 'blocked' && task.blockReason && <p className="card-note is-blocked" title={task.blockReason}>{task.blockReason}</p>}
-      {task.status === 'review' && <p className="card-note is-review">{t.board.awaitingReview}</p>}
+      {task.status === 'review' && <p className="card-note is-review" title={task.reviewRequest ?? undefined}>{task.reviewRequest ?? t.board.awaitingReview}</p>}
       {task.status === 'done' && task.result && <p className="card-note" title={task.result}>{task.result}</p>}
       <div className="task-card-meta">
         {open && task.dueOn && <DueChip dueOn={task.dueOn} />}

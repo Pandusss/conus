@@ -116,8 +116,20 @@ describe('MCP endpoint', () => {
     expect(ctx.structuredContent.session).toBe(session.ref);
     expect(ctx.structuredContent.session_tasks.map((t: any) => t.ref)).toEqual([`${project.key}-1`]);
 
+    // asking for a look at everything is refused: the answer says what is missing and that verified work just closes
+    const vague: any = await c.callTool({ name: 'task_complete', arguments: { task: `${project.key}-1`, result: 'Готово, посмотри', needs_review: true } });
+    expect(vague.isError).toBe(true);
+    expect(vague.structuredContent.error).toMatchObject({ code: 'validation', details: { field: 'review_request' } });
+    expect(vague.content[0].text).toContain('complete without needs_review');
+    const asked: any = await c.callTool({
+      name: 'task_complete',
+      arguments: { task: `${project.key}-1`, result: 'Импорт работает', needs_review: true, review_request: 'Загрузи свой файл: верно ли читаются даты' },
+    });
+    expect(asked.structuredContent.task).toMatchObject({ status: 'review', review_request: 'Загрузи свой файл: верно ли читаются даты' });
+    expect(asked.structuredContent.chat_note).toBe(`${project.key}-1 → review`);
+
     const done: any = await c.callTool({ name: 'task_complete', arguments: { task: `${project.key}-1`, result: 'Парсер и тесты готовы' } });
-    expect(done.structuredContent.task.status).toBe('done');
+    expect(done.structuredContent.task).toMatchObject({ status: 'done', review_request: null });
     const after: any = await c.callTool({ name: 'tasks_context', arguments: { query: 'импорт', status: ['done'] } });
     expect(after.structuredContent.tasks.map((t: any) => t.status)).toEqual(['done']);
     await c.close();

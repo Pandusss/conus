@@ -32,4 +32,13 @@ describe('Timeline', () => {
     expect(screen.getByText('Причина: ждём ключи')).toBeTruthy();
     expect(screen.getByText('заметка агента')).toBeTruthy();
   });
+
+  it('says what was asked to check when a task went to review', () => {
+    renderPage(<Timeline events={[{
+      ...event, type: 'sent_to_review', actorKind: 'agent', actorName: 'claude-code@laptop',
+      changes: { status: { from: 'in_progress', to: 'review' } }, reason: 'Открой /pricing: вид карточек', note: 'Карточки переделаны.',
+    }]} />);
+    expect(screen.getByText('Проверить: Открой /pricing: вид карточек')).toBeTruthy();
+    expect(screen.queryByText(/Причина/)).toBeNull();
+  });
 });

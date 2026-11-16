@@ -322,6 +322,8 @@ export const en = {
     moveNote: 'The task gets the next number in that project; its history keeps the old one.',
     moved: (ref: string) => `Moved: ${ref}`,
     result: 'Result',
+    reviewRequest: 'What to check',
+    reviewLine: (what: string) => `To check: ${what}`,
     blocker: 'Blocker',
     source: 'Source',
     subtasks: 'Subtasks',

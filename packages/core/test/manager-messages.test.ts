@@ -138,7 +138,7 @@ describe('what waits for the owner now', () => {
     expect((await buildNow(db, null, new Date())).text).toContain('📌 <b>2 proposals wait for your decision</b>');
 
     // a check, a blocker and a deadline: three tasks wait
-    await completeTask(ctx, { projectId: s.project.id, task: main.ref, result: 'Importer shipped.', needsReview: true });
+    await completeTask(ctx, { projectId: s.project.id, task: main.ref, result: 'Importer shipped.', needsReview: true, reviewRequest: 'Import your own <CSV> and look at the dates' });
     const stuck = await mk('Rotate the keys');
     await blockTask(ctx, { projectId: s.project.id, task: stuck.ref, reason: 'no access to the vault' });
     const today = localClock(new Date(), 'UTC').date;
@@ -151,7 +151,7 @@ describe('what waits for the owner now', () => {
     expect(v.empty).toBe(false);
     expect(v.text).toBe([
       '⏰ <b>3 tasks wait for you</b>',
-      `👀 <b>To check · 1</b>\n• ${ref} Ship the importer`,
+      `👀 <b>To check · 1</b>\n• ${ref} Ship the importer\n    <i>Import your own &lt;CSV&gt; and look at the dates</i>`,
       `⛔ <b>Blocked · 1</b>\n• <a href="${BASE}/tasks/${stuck.id}">${stuck.ref}</a> Rotate the keys\n    <i>no access to the vault</i>`,
       `📅 <b>Deadlines</b>\n• <a href="${BASE}/tasks/${dueToday.id}">${dueToday.ref}</a> Pay the hosting bill · <i>due today</i>`,
       `📥 <a href="${BASE}/proposals">2 proposals</a> wait for your decision`,
@@ -162,7 +162,7 @@ describe('what waits for the owner now', () => {
     const { notices } = await pendingNotices(db, 0);
     expect(renderNoticeBurst(notices, BASE)).toBe([
       '🔔 <b>2 tasks wait for you</b>',
-      `👀 <b>To check · 1</b>\n• ${ref} Ship the importer`,
+      `👀 <b>To check · 1</b>\n• ${ref} Ship the importer\n    <i>Import your own &lt;CSV&gt; and look at the dates</i>`,
       `⛔ <b>Blocked · 1</b>\n• <a href="${BASE}/tasks/${stuck.id}">${stuck.ref}</a> Rotate the keys\n    <i>no access to the vault</i>`,
     ].join('\n\n'));
   });

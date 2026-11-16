@@ -223,7 +223,7 @@ describe('digest and notifications', () => {
     const start = await notifiedUpTo(db);
     const check = await s.mk('Check me');
     await startTask(s.ctx, { projectId: s.project.id, task: check.ref });
-    await completeTask(s.ctx, { projectId: s.project.id, task: check.ref, result: 'Done <b>bold</b> & more', needsReview: true });
+    await completeTask(s.ctx, { projectId: s.project.id, task: check.ref, result: 'Done <b>bold</b> & more', needsReview: true, reviewRequest: 'Open the page and look' });
     const stuck = await s.mk('Stuck <script>');
     await blockTask(s.ctx, { projectId: s.project.id, task: stuck.ref, reason: 'no keys' });
     const unstuck = await s.mk('Unblocked later');

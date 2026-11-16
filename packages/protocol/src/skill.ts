@@ -22,8 +22,9 @@ ${PROTOCOL_CORE}
 | Your own plan steps, small fixes inside the current task | NOT tasks — mention in the result |
 | Important defect outside the current task, not fixing now | task_create type=bug |
 | Cannot continue without credentials / a decision / another task | task_block with reason |
-| Done and verified (tests, the user's confirmation) | task_complete with result |
-| Done but the user must check it | task_complete needs_review=true |
+| Done and verified by you (tests pass, you ran it, you saw the result) or confirmed by the user | task_complete with result — closes the task, no review |
+| Done, and one specific thing is left that only the user can check (how it looks to them, a real device, their account, a choice that is theirs), or they asked to see it | task_complete needs_review=true review_request="what to check" |
+| Not sure the work is done | it is not done: verify it, keep working, or task_block — review is not a safety net |
 | "We won't do it", "не будем", rollback | task_drop the related tasks and proposals |
 
 ## Examples
@@ -31,6 +32,9 @@ ${PROTOCOL_CORE}
 - "Explain how the parser works" → nothing.
 - "Rename this variable" → nothing.
 - "Add a --json flag to the CLI" → task_create "Добавить флаг --json в CLI" start_now=true, implement, commit, task_complete with result.
+- The flag works, the tests pass and you ran the command yourself → task_complete without needs_review. Do not ask the user to "take a look" at work you have verified.
+- You restyled the pricing page, it builds and renders, but only the user can say whether they like it → task_complete needs_review=true, review_request "Открой /pricing: устраивает ли новый вид карточек тарифов".
+- The fix needs a real iPhone you do not have → task_complete needs_review=true, review_request "Проверь на своём iPhone: клавиатура больше не перекрывает поле ввода".
 - "Let's do the export next week" → task_create (todo), do not start.
 - "Надо бы когда-нибудь кэш переделать" → task_propose "Переделать кэш", source_quote = that sentence.
 - While implementing import you notice the date parser is broken elsewhere and you will not fix it now → task_create type=bug.
@@ -44,6 +48,7 @@ ${PROTOCOL_CORE}
 - outcome=possible_duplicates: read the candidates. If one is the same work, use it (task_start or task_update with a note). If it is really different, call the same tool again with confirm_new={reason} explaining the difference.
 - error conflict_claimed: another active session works on the task. Do not take it over. If you need related work, create a subtask; mention the conflict in the chat line.
 - error conflict_version / invalid_transition: the response contains the current state; adapt (e.g. the user already closed it) and continue.
+- error validation on review_request: needs_review=true was sent without saying what to check. If there is one specific thing only the user can check, repeat with review_request; if there is none, repeat without needs_review.
 - Any Conus error must never stop your actual work. Continue the user's task.
 
 ## Chat line
